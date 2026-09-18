@@ -112,6 +112,47 @@ test('PUT persiste los valores entre llamadas (no pisa lo cargado por otro rol)'
   expect(res.body.pred.p1).toBe(3);
 });
 
+test('PUT con nivel invalido en pred devuelve 400 y no escribe nada', async () => {
+  await seedBase();
+  const agent = await loginAs('foos', 'supervisor', 'FOOS, JOSE CARLOS');
+  const res = await agent.put('/api/evaluaciones/2026-02/1001').send({ pred: { p1: 'abc' } });
+  expect(res.status).toBe(400);
+  const adminAgent = await loginAs('admin', 'admin');
+  const check = await adminAgent.get('/api/evaluaciones/2026-02/1001');
+  expect(check.body.pred.p1).toBeUndefined();
+});
+
+test('PUT con un criterio invalido y uno valido no persiste ninguno (rollback transaccional)', async () => {
+  await seedBase();
+  const agent = await loginAs('foos', 'supervisor', 'FOOS, JOSE CARLOS');
+  const res = await agent.put('/api/evaluaciones/2026-02/1001').send({ pred: { p1: 3 } });
+  expect(res.status).toBe(200);
+  const shAgent = await loginAs('schmidt', 'syh');
+  const bad = await shAgent.put('/api/evaluaciones/2026-02/1001').send({ sh: { s1: 3, s2: 'nope' } });
+  expect(bad.status).toBe(400);
+  const adminAgent = await loginAs('admin', 'admin');
+  const check = await adminAgent.get('/api/evaluaciones/2026-02/1001');
+  expect(check.body.pred.p1).toBe(3);
+  expect(check.body.sh.s1).toBeUndefined();
+});
+
+test('PUT devuelve legajo/nombre y los campos vac/real/pred/sh/com recien guardados, no solo los calculados', async () => {
+  await seedBase();
+  const agent = await loginAs('foos', 'supervisor', 'FOOS, JOSE CARLOS');
+  const res = await agent.put('/api/evaluaciones/2026-02/1001').send({ pred: { p1: 3 }, com: { pred: 'buen desempeno' } });
+  expect(res.status).toBe(200);
+  expect(res.body.legajo).toBe('1001');
+  expect(res.body.nombre).toBe('PEREZ, JUAN');
+  expect(res.body.sector).toBe('Taller');
+  expect(res.body.evaluador).toBe('Foos');
+  expect(res.body.pred.p1).toBe(3);
+  expect(res.body.com.pred).toBe('buen desempeno');
+  expect(res.body).toHaveProperty('vac');
+  expect(res.body).toHaveProperty('real');
+  expect(res.body).toHaveProperty('sh');
+  expect(res.body).toHaveProperty('fPr');
+});
+
 test('POST /api/evaluaciones/:mes/finalizar marca la finalizacion del usuario actual', async () => {
   await seedBase();
   const agent = await loginAs('foos', 'supervisor', 'FOOS, JOSE CARLOS');

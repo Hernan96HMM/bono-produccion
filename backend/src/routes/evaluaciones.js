@@ -123,51 +123,73 @@ router.put('/:mes/:legajo', async (req, res) => {
     if (body.com.sh !== undefined && !['admin', 'syh'].includes(role)) return res.status(403).json({ error: 'No autorizado' });
   }
 
-  const { rows: existing } = await pool.query('SELECT * FROM evaluaciones WHERE legajo=$1 AND mes=$2', [legajo, mes]);
-  let evaluacionId;
-  if (existing[0]) {
-    evaluacionId = existing[0].id;
-    const vac = body.vac !== undefined ? Number(body.vac) || 0 : Number(existing[0].vac_horas);
-    const real = body.real !== undefined ? Number(body.real) || 0 : Number(existing[0].horas_reales);
-    await pool.query('UPDATE evaluaciones SET vac_horas=$1, horas_reales=$2, updated_at=now() WHERE id=$3', [vac, real, evaluacionId]);
-  } else {
-    const vac = Number(body.vac) || 0;
-    const real = Number(body.real) || 0;
-    const { rows } = await pool.query(
-      'INSERT INTO evaluaciones (legajo, mes, vac_horas, horas_reales) VALUES ($1,$2,$3,$4) RETURNING id',
-      [legajo, mes, vac, real]
-    );
-    evaluacionId = rows[0].id;
-  }
-
+  const ctx = await loadCalcContext(mes);
   for (const grupo of ['pred', 'sh']) {
     if (body[grupo]) {
       for (const [criterioId, nivel] of Object.entries(body[grupo])) {
-        const nivelNum = (nivel === '' || nivel === null || nivel === undefined) ? null : Number(nivel);
-        await pool.query(
-          `INSERT INTO evaluaciones_criterios (evaluacion_id, grupo, criterio_id, nivel) VALUES ($1,$2,$3,$4)
-           ON CONFLICT (evaluacion_id, grupo, criterio_id) DO UPDATE SET nivel=$4`,
-          [evaluacionId, grupo, criterioId, nivelNum]
-        );
+        if (nivel === '' || nivel === null || nivel === undefined) continue;
+        const nivelNum = Number(nivel);
+        if (!Number.isFinite(nivelNum) || !ctx.niveles.some(n => n.numero === nivelNum)) {
+          return res.status(400).json({ error: 'Nivel invalido: ' + nivel });
+        }
       }
     }
   }
-  if (body.com) {
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: existing } = await client.query('SELECT * FROM evaluaciones WHERE legajo=$1 AND mes=$2', [legajo, mes]);
+    let evaluacionId;
+    if (existing[0]) {
+      evaluacionId = existing[0].id;
+      const vac = body.vac !== undefined ? Number(body.vac) || 0 : Number(existing[0].vac_horas);
+      const real = body.real !== undefined ? Number(body.real) || 0 : Number(existing[0].horas_reales);
+      await client.query('UPDATE evaluaciones SET vac_horas=$1, horas_reales=$2, updated_at=now() WHERE id=$3', [vac, real, evaluacionId]);
+    } else {
+      const vac = Number(body.vac) || 0;
+      const real = Number(body.real) || 0;
+      const { rows } = await client.query(
+        'INSERT INTO evaluaciones (legajo, mes, vac_horas, horas_reales) VALUES ($1,$2,$3,$4) RETURNING id',
+        [legajo, mes, vac, real]
+      );
+      evaluacionId = rows[0].id;
+    }
+
     for (const grupo of ['pred', 'sh']) {
-      if (body.com[grupo] !== undefined) {
-        await pool.query(
-          `INSERT INTO evaluaciones_comentarios (evaluacion_id, grupo, texto) VALUES ($1,$2,$3)
-           ON CONFLICT (evaluacion_id, grupo) DO UPDATE SET texto=$3`,
-          [evaluacionId, grupo, body.com[grupo] || '']
-        );
+      if (body[grupo]) {
+        for (const [criterioId, nivel] of Object.entries(body[grupo])) {
+          const nivelNum = (nivel === '' || nivel === null || nivel === undefined) ? null : Number(nivel);
+          await client.query(
+            `INSERT INTO evaluaciones_criterios (evaluacion_id, grupo, criterio_id, nivel) VALUES ($1,$2,$3,$4)
+             ON CONFLICT (evaluacion_id, grupo, criterio_id) DO UPDATE SET nivel=$4`,
+            [evaluacionId, grupo, criterioId, nivelNum]
+          );
+        }
       }
     }
+    if (body.com) {
+      for (const grupo of ['pred', 'sh']) {
+        if (body.com[grupo] !== undefined) {
+          await client.query(
+            `INSERT INTO evaluaciones_comentarios (evaluacion_id, grupo, texto) VALUES ($1,$2,$3)
+             ON CONFLICT (evaluacion_id, grupo) DO UPDATE SET texto=$3`,
+            [evaluacionId, grupo, body.com[grupo] || '']
+          );
+        }
+      }
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 
   const evalMap = await loadEvalRows(mes, [legajo]);
   const e = evalMap[legajo];
-  const ctx = await loadCalcContext(mes);
-  res.json(computeWithContext(ctx, e));
+  res.json({ legajo: p.legajo, nombre: p.nombre, sector: p.sector, evaluador: p.evaluador, ...e, ...computeWithContext(ctx, e) });
 });
 
 router.post('/:mes/finalizar', async (req, res) => {
