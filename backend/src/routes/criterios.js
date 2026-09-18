@@ -1,20 +1,9 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { loadGrupo } = require('../lib/critRepo');
 
 const router = express.Router();
-
-async function loadGrupo(grupo) {
-  const { rows: crits } = await pool.query('SELECT * FROM criterios WHERE grupo=$1 ORDER BY orden', [grupo]);
-  const out = [];
-  for (const c of crits) {
-    const { rows: rub } = await pool.query('SELECT nivel, texto FROM criterio_rubricas WHERE criterio_id_ref=$1', [c.id]);
-    const rubricas = {};
-    rub.forEach(r => { rubricas[r.nivel] = r.texto; });
-    out.push({ id: c.criterio_id, label: c.label, descripcion: c.descripcion, orden: c.orden, rubricas });
-  }
-  return out;
-}
 
 router.get('/', requireAuth, async (req, res) => {
   res.json({ pred: await loadGrupo('pred'), sh: await loadGrupo('sh') });

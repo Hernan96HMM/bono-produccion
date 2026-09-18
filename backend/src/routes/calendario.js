@@ -2,32 +2,10 @@ const express = require('express');
 const { pool } = require('../db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { calTotals } = require('../lib/calendar');
+const { loadReglas, loadFeriados, loadDias } = require('../lib/calendarRepo');
 
 const router = express.Router();
 router.use(requireAuth, requireRole('admin', 'produccion'));
-
-async function loadReglas() {
-  const { rows } = await pool.query('SELECT lun_jue, vie, sab, dom, descanso FROM calendario_reglas WHERE id=1');
-  if (rows[0]) return rows[0];
-  const insert = await pool.query(
-    `INSERT INTO calendario_reglas (id, lun_jue, vie, sab, dom, descanso) VALUES (1,9,8,0,0,1) RETURNING lun_jue, vie, sab, dom, descanso`
-  );
-  return insert.rows[0];
-}
-
-async function loadFeriados() {
-  const { rows } = await pool.query('SELECT fecha, nombre FROM calendario_feriados');
-  const out = {};
-  rows.forEach(r => { out[r.fecha.toISOString().slice(0, 10)] = r.nombre; });
-  return out;
-}
-
-async function loadDias() {
-  const { rows } = await pool.query('SELECT fecha, horas_brutas, descuento, nombre FROM calendario_dias_especiales');
-  const out = {};
-  rows.forEach(r => { out[r.fecha.toISOString().slice(0, 10)] = { horas_brutas: r.horas_brutas, descuento: r.descuento, nombre: r.nombre }; });
-  return out;
-}
 
 router.get('/:mes', async (req, res) => {
   const reglas = await loadReglas();
