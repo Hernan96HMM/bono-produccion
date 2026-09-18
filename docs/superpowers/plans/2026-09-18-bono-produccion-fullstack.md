@@ -338,7 +338,7 @@ Expected: logs muestran `database system is ready to accept connections` y ning�
 ```bash
 docker compose exec db psql -U sica -d sica_bonos -c "\dt"
 ```
-Expected: lista con las 14 tablas (`users, personal, config, criterios, criterio_rubricas, factores, niveles, calendario_reglas, calendario_feriados, calendario_dias_especiales, evaluaciones, evaluaciones_criterios, evaluaciones_comentarios, evaluaciones_finalizadas, historial`).
+Expected: lista con las 15 tablas (`users, personal, config, criterios, criterio_rubricas, factores, niveles, calendario_reglas, calendario_feriados, calendario_dias_especiales, evaluaciones, evaluaciones_criterios, evaluaciones_comentarios, evaluaciones_finalizadas, historial`).
 
 Nota: si `init.sql` se edita después de la primera vez que Postgres crea el volumen en `./data/postgres`, no se re-ejecuta automáticamente (Postgres solo corre `docker-entrypoint-initdb.d` en un data dir vacío). Durante desarrollo de este plan, si se necesita reaplicar el esquema: `docker compose down && rm -rf data/postgres && docker compose up -d db`.
 
