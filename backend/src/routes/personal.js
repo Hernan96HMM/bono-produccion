@@ -38,6 +38,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:legajo', async (req, res) => {
   const p = req.body || {};
+  if (!p.nombre) return res.status(400).json({ error: 'Nombre es obligatorio' });
   const { rows } = await pool.query(
     `UPDATE personal SET nombre=$1, sector=$2, puesto=$3, evaluador=$4, tipo=$5, spm=$6, estado=$7, acceso=$8, sueldo_base=$9
      WHERE legajo=$10 RETURNING *`,

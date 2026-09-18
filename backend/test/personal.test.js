@@ -95,6 +95,19 @@ test('PUT /api/personal/:legajo con legajo inexistente devuelve 404', async () =
   expect(res.status).toBe(404);
 });
 
+test('PUT /api/personal/:legajo sin nombre devuelve 400', async () => {
+  await seedPersonal();
+  const agent = await loginAs('admin');
+  const res = await agent.put('/api/personal/1001').send({ sector: 'X' });
+  expect(res.status).toBe(400);
+});
+
+test('POST /api/personal con tipo invalido no cuelga la request y responde 500', async () => {
+  const agent = await loginAs('admin');
+  const res = await agent.post('/api/personal').send({ legajo: '4001', nombre: 'INVALIDO', tipo: 'NoExiste' });
+  expect(res.status).toBe(500);
+});
+
 test('DELETE /api/personal/:legajo elimina la persona', async () => {
   await seedPersonal();
   const agent = await loginAs('admin');
