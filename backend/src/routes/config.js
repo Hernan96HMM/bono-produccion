@@ -23,6 +23,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.put('/', requireAuth, requireRole('admin'), async (req, res) => {
   const { mes, horas_normales, descuento, bono_base_pct } = req.body || {};
+  if (!mes) return res.status(400).json({ error: 'mes es requerido' });
   const { rows } = await pool.query(
     `INSERT INTO config (id, mes, horas_normales, descuento, bono_base_pct)
      VALUES (1,$1,$2,$3,$4)

@@ -46,3 +46,9 @@ test('PUT /api/config devuelve 403 si el usuario no es admin', async () => {
   const res = await agent.put('/api/config').send({ mes: '2026-03' });
   expect(res.status).toBe(403);
 });
+
+test('PUT /api/config sin mes devuelve 400', async () => {
+  const agent = await loginAs('admin');
+  const res = await agent.put('/api/config').send({ bono_base_pct: 20 });
+  expect(res.status).toBe(400);
+});
