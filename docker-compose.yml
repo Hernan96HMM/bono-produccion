@@ -25,6 +25,7 @@ services:
     environment:
       DATABASE_URL: postgresql://sica:${DB_PASSWORD}@db:5432/sica_bonos
       JWT_SECRET: ${JWT_SECRET}
+      TZ: UTC
     restart: always
 
   frontend:
