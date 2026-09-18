@@ -10,6 +10,7 @@ const criteriosRoutes = require('./routes/criterios');
 const factoresRoutes = require('./routes/factores');
 const nivelesRoutes = require('./routes/niveles');
 const calendarioRoutes = require('./routes/calendario');
+const evaluacionesRoutes = require('./routes/evaluaciones');
 
 const app = express();
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use('/api/criterios', criteriosRoutes);
 app.use('/api/factores', factoresRoutes);
 app.use('/api/niveles', nivelesRoutes);
 app.use('/api/calendario', calendarioRoutes);
+app.use('/api/evaluaciones', evaluacionesRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
