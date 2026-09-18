@@ -1,4 +1,4 @@
-const DOW_ES = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+const DOW_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 function daysOfMonth(mes) {
   const [y, m] = mes.split('-').map(Number);
@@ -26,7 +26,7 @@ function dayInfo(iso, dow, reglas, feriados, dias) {
   brutas = Number(brutas) || 0;
   const desc = brutas > 0 ? (Number(reglas.descanso) || 0) : 0;
   const netas = Math.max(brutas - desc, 0);
-  const tipo = (dow === 0 || dow === 6) ? 'Fin de semana' : (brutas > 0 ? 'Habil' : 'No laboral');
+  const tipo = (dow === 0 || dow === 6) ? 'Fin de semana' : (brutas > 0 ? 'Hábil' : 'No laboral');
   return { brutas, desc, netas, tipo, nombre: '' };
 }
 

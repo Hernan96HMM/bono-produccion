@@ -10,7 +10,7 @@ test('daysOfMonth devuelve un objeto por dia del mes con dia de la semana', () =
 test('dayInfo: dia habil lunes a jueves usa reglas.lun_jue y descuenta descanso', () => {
   const reglas = { lun_jue: 9, vie: 8, sab: 0, dom: 0, descanso: 1 };
   const info = dayInfo('2026-02-03', 2, reglas, {}, {}); // martes
-  expect(info).toEqual({ brutas: 9, desc: 1, netas: 8, tipo: 'Habil', nombre: '' });
+  expect(info).toEqual({ brutas: 9, desc: 1, netas: 8, tipo: 'Hábil', nombre: '' });
 });
 
 test('dayInfo: fin de semana sin horas queda No laboral si brutas=0', () => {
