@@ -9,6 +9,7 @@ const usersRoutes = require('./routes/users');
 const criteriosRoutes = require('./routes/criterios');
 const factoresRoutes = require('./routes/factores');
 const nivelesRoutes = require('./routes/niveles');
+const calendarioRoutes = require('./routes/calendario');
 
 const app = express();
 app.use(express.json());
@@ -22,6 +23,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/criterios', criteriosRoutes);
 app.use('/api/factores', factoresRoutes);
 app.use('/api/niveles', nivelesRoutes);
+app.use('/api/calendario', calendarioRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
