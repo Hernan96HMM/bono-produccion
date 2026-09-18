@@ -3,6 +3,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const configRoutes = require('./routes/config');
+const personalRoutes = require('./routes/personal');
 
 const app = express();
 app.use(express.json());
@@ -11,6 +12,7 @@ app.use(cookieParser());
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/personal', personalRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
