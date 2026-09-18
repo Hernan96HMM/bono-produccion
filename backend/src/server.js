@@ -12,6 +12,7 @@ const nivelesRoutes = require('./routes/niveles');
 const calendarioRoutes = require('./routes/calendario');
 const evaluacionesRoutes = require('./routes/evaluaciones');
 const { router: resultadosRoutes } = require('./routes/resultados');
+const historialRoutes = require('./routes/historial');
 
 const app = express();
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use('/api/niveles', nivelesRoutes);
 app.use('/api/calendario', calendarioRoutes);
 app.use('/api/evaluaciones', evaluacionesRoutes);
 app.use('/api/resultados', resultadosRoutes);
+app.use('/api/historial', historialRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
