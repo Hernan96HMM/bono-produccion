@@ -833,12 +833,20 @@ function delNivel(i){if(crit.niveles.length<=2){toast('Deben quedar al menos 2 n
 function resetNiveles(){if(!confirm('¿Restaurar la escala 0/50/100/125?'))return;crit.niveles=defCriteria().niveles;DB.save(K.crit,crit);renderNiveles();toast('Escala restaurada');}
 
 /* ============ USUARIOS ============ */
+function mapUser(u) {
+  return { id: u.id, user: u.username, name: u.name, role: u.role, evaluador: u.evaluador_nombre || '' };
+}
 /* cuántos participantes SPM activos tiene asignado un nombre de evaluador */
 function countAsignados(evName){return personal.filter(p=>p.spm&&p.estado==='Activo'&&sameEv(p.evaluador,evName)).length;}
 /* evaluadores de la nómina que tienen gente participante del bono */
 function evaluadoresConSPM(){const m={};personal.filter(p=>p.spm&&p.estado==='Activo'&&p.evaluador&&p.evaluador!=='—').forEach(p=>{m[p.evaluador]=(m[p.evaluador]||0)+1;});
   return Object.entries(m).sort((a,b)=>b[1]-a[1]);}
-function rUsers(){const tb=document.getElementById('tb-users');tb.innerHTML='';
+async function rUsers(){
+  try {
+    users = (await Api.getUsers()).map(mapUser);
+    personal = (await Api.getPersonal()).map(mapPersona);
+  } catch (err) { toast('No se pudieron cargar los usuarios: ' + err.message, 'err'); return; }
+  const tb=document.getElementById('tb-users');tb.innerHTML='';
   users.forEach((u,i)=>{const tr=document.createElement('tr');
     let cargo='—';
     if(u.role==='supervisor'){const n=countAsignados(u.evaluador);
@@ -848,7 +856,8 @@ function rUsers(){const tb=document.getElementById('tb-users');tb.innerHTML='';
       <td><span class="badge b-role">${ROLES[u.role]?.label||u.role}</span></td><td class="l">${esc(u.evaluador||'—')}</td>
       <td>${cargo}</td>
       <td><button class="mini" onclick="userModal(${i})">Editar</button>
-        <button class="del" onclick="delUser(${i})" ${u.user==='admin'?'disabled title="No se puede eliminar"':''}>✕</button></td>`;tb.appendChild(tr);});}
+        <button class="del" onclick="delUser(${i})" ${u.user==='admin'?'disabled title="No se puede eliminar"':''}>✕</button></td>`;tb.appendChild(tr);});
+}
 
 /* ---- Generación rápida de supervisores ---- */
 function slugUser(nombreEval){ // "FOOS, JOSE CARLOS" -> "foos"
@@ -875,19 +884,25 @@ function genSupervisoresModal(){
     <div class="m-actions" style="margin-top:14px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-ok" onclick="genSupervisores()">Crear seleccionados</button></div>`;
   document.getElementById('modal').style.display='flex';
 }
-function genSupervisores(){
+async function genSupervisores(){
   const pass=document.getElementById('gs-pass').value||'sica2026';
-  const evs=evaluadoresConSPM();let creados=0;
-  document.querySelectorAll('.gs-chk').forEach(chk=>{
-    if(chk.disabled||!chk.checked)return;
+  const evs=evaluadoresConSPM();
+  const checks=[...document.querySelectorAll('.gs-chk')].filter(chk=>!chk.disabled&&chk.checked);
+  let creados=0;
+  for (const chk of checks) {
     const i=+chk.dataset.i;const ev=evs[i][0];
     const userInput=document.querySelector(`.gs-user[data-i="${i}"]`);const user=userInput.value.trim();
-    if(!user){return;}
-    if(users.some(x=>x.user===user)){toast(`El usuario "${user}" ya existe, saltado`,'err');return;}
+    if(!user)continue;
+    if(users.some(x=>x.user===user)){toast(`El usuario "${user}" ya existe, saltado`,'err');continue;}
     const nombre=ev.split(',')[0].trim().split(' ').map(w=>w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
-    users.push({user,pass:hash(pass),name:nombre,role:'supervisor',evaluador:ev});creados++;
-  });
-  if(creados){DB.save(K.users,users);closeModal();rUsers();toast(`${creados} supervisor(es) creado(s) · contraseña temporal`);}
+    try {
+      await Api.createUser({ username: user, password: pass, name: nombre, role: 'supervisor', evaluador_nombre: ev });
+      creados++;
+    } catch (err) {
+      toast(`No se pudo crear "${user}": ${err.message}`,'err');
+    }
+  }
+  if(creados){closeModal();await rUsers();toast(`${creados} supervisor(es) creado(s) · contraseña temporal`);}
   else{toast('No se creó ninguno (ya existían o sin selección)','warn');}
 }
 
@@ -901,13 +916,35 @@ function userModal(i){const edit=(typeof i==='number'),u=edit?users[i]:{user:'',
     <div class="field"><label>Evaluador asignado (solo Supervisor) — debe coincidir con la columna Evaluador de la nómina</label><input id="m-eval" class="txt" list="dl-ueval" value="${esc(u.evaluador)}" placeholder="Ej: Foos"><datalist id="dl-ueval">${uniq(personal,'evaluador').filter(e=>e&&e!=='—').map(e=>`<option>${esc(e)}</option>`).join('')}</datalist></div>
     <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveUser(${edit?i:-1})">Guardar</button></div>`;
   document.getElementById('modal').style.display='flex';}
-function saveUser(i){const edit=i>=0;const u=document.getElementById('m-user').value.trim(),n=document.getElementById('m-name').value.trim(),
-    p=document.getElementById('m-pass').value,r=document.getElementById('m-role').value,ev=document.getElementById('m-eval').value.trim();
-  if(edit){users[i].name=n||users[i].name;users[i].role=r;users[i].evaluador=(r==='supervisor')?ev:'';if(p)users[i].pass=hash(p);}
-  else{if(!u||!p){toast('Usuario y contraseña obligatorios','err');return;}if(users.find(x=>x.user===u)){toast('Ese usuario ya existe','err');return;}
-    users.push({user:u,pass:hash(p),name:n||u,role:r,evaluador:(r==='supervisor')?ev:''});}
-  DB.save(K.users,users);closeModal();rUsers();toast(edit?'Usuario actualizado':'Usuario creado');}
-function delUser(i){if(users[i].user==='admin')return;if(!confirm('¿Eliminar usuario?'))return;users.splice(i,1);DB.save(K.users,users);rUsers();toast('Usuario eliminado','warn');}
+async function saveUser(i){
+  const edit=i>=0;
+  const u=document.getElementById('m-user').value.trim(), n=document.getElementById('m-name').value.trim(),
+    p=document.getElementById('m-pass').value, r=document.getElementById('m-role').value, ev=document.getElementById('m-eval').value.trim();
+  try {
+    if (edit) {
+      const payload = { name: n || users[i].name, role: r, evaluador_nombre: (r === 'supervisor') ? ev : '' };
+      if (p) payload.password = p;
+      await Api.updateUser(users[i].id, payload);
+    } else {
+      if (!u || !p) { toast('Usuario y contraseña obligatorios', 'err'); return; }
+      await Api.createUser({ username: u, password: p, name: n || u, role: r, evaluador_nombre: (r === 'supervisor') ? ev : '' });
+    }
+  } catch (err) {
+    toast(err.message, 'err');
+    return;
+  }
+  closeModal();
+  await rUsers();
+  toast(edit ? 'Usuario actualizado' : 'Usuario creado');
+}
+async function delUser(i){
+  if(users[i].user==='admin')return;
+  if(!confirm('¿Eliminar usuario?'))return;
+  try { await Api.deleteUser(users[i].id); }
+  catch (err) { toast(err.message, 'err'); return; }
+  await rUsers();
+  toast('Usuario eliminado','warn');
+}
 function closeModal(){document.getElementById('modal').style.display='none';}
 
 /* ============ EXPORT ============ */
