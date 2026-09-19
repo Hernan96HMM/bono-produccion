@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bono de Producción — SICA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#080E1A;--nav:#050B14;--card:#0E1824;--card2:#121E2E;--bo:#1C2E44;--bo2:#243A55;
+--tx:#DDE6F4;--t2:#657FA0;--t3:#2C3E55;--grn:#1DB954;--red:#E53935;--amb:#F4A900;--blu:#2979FF;--pur:#9C27B0;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;font-size:13px}
+.mono{font-family:'DM Mono',monospace}
+button{font-family:inherit;font-size:12px;font-weight:500;border:none;border-radius:7px;padding:8px 14px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--blu);color:#fff}.btn-primary:hover{background:#1c6ef0}
+.btn-ghost{background:var(--card2);color:var(--tx);border:1px solid var(--bo)}.btn-ghost:hover{border-color:var(--bo2)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--bo)}.btn-danger:hover{background:rgba(229,57,53,.1);border-color:var(--red)}
+.btn-ok{background:var(--grn);color:#04210f}.btn-ok:hover{filter:brightness(1.1)}
+input,select{font-family:'DM Mono',monospace;background:var(--bg);border:1px solid var(--bo);border-radius:6px;padding:8px 10px;color:var(--tx);font-size:12px}
+input:focus,select:focus{outline:none;border-color:var(--blu)}
+input.txt{font-family:'DM Sans',sans-serif}
+
+#login{position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,#0d1a2e,#060b14);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-box{background:var(--card);border:1px solid var(--bo);border-radius:16px;padding:34px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.login-box h1{font-size:19px;font-weight:700;margin-bottom:2px}.login-box h1 span{color:var(--blu)}
+.login-box .sub{font-size:11px;color:var(--t2);margin-bottom:22px}
+.login-box label{font-size:11px;color:var(--t2);display:block;margin:12px 0 5px}
+.login-box input{width:100%}.login-box button{width:100%;margin-top:20px;justify-content:center;padding:11px}
+.login-err{color:var(--red);font-size:11px;margin-top:10px;min-height:14px;text-align:center}
+.login-hint{margin-top:18px;padding-top:14px;border-top:1px solid var(--bo);font-size:10px;color:var(--t3);line-height:1.7}
+.login-hint b{color:var(--t2)}
+
+#app{display:none;grid-template-columns:220px 1fr;min-height:100vh}
+aside{background:var(--nav);border-right:1px solid var(--bo);padding:18px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:0 20px 18px;border-bottom:1px solid var(--bo);margin-bottom:12px}
+.brand h1{font-size:16px;font-weight:700}.brand h1 span{color:var(--blu)}.brand .sub{font-size:10px;color:var(--t2);margin-top:2px}
+nav{flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 20px;color:var(--t2);cursor:pointer;font-size:13px;font-weight:500;border-left:3px solid transparent;transition:.12s}
+.nav-item:hover{background:var(--card);color:var(--tx)}.nav-item.active{background:var(--card);color:var(--tx);border-left-color:var(--blu)}
+.nav-item .ico{width:18px;text-align:center;font-size:14px}
+.userbox{padding:14px 20px;border-top:1px solid var(--bo);margin-top:8px}
+.userbox .u-name{font-size:12px;font-weight:600}.userbox .u-role{font-size:10px;color:var(--blu);margin-top:1px}.userbox .u-sector{font-size:10px;color:var(--t2);margin-top:1px}
+.userbox button{width:100%;margin-top:10px;justify-content:center;font-size:11px;padding:7px}
+
+main{padding:22px 26px 60px;overflow-x:hidden}
+.sec{display:none}.sec.active{display:block}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.sec-head h2{font-size:20px;font-weight:700}.sec-head .desc{font-size:11px;color:var(--t2);margin-top:2px}
+.sec-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.period-pill{background:var(--card2);border:1px solid var(--bo2);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--amb);font-family:'DM Mono',monospace}
+.month-sel{display:flex;align-items:center;gap:8px}
+.month-sel label{font-size:12px;color:var(--t2)}
+.month-sel input{padding:6px 10px}
+
+.info-note{background:rgba(41,121,255,.06);border:1px solid rgba(41,121,255,.25);border-radius:9px;padding:10px 14px;font-size:11.5px;color:var(--t2);margin-bottom:14px;line-height:1.55}
+.info-note b{color:var(--tx)}
+
+/* filtros */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.filters input.search{width:230px}
+.filters select{min-width:150px}
+.filters .count{margin-left:auto;font-size:12px;color:var(--t2);font-family:'DM Mono',monospace;white-space:nowrap}
+.filters .count b{color:var(--blu)}
+
+.grid{display:grid;gap:14px}.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kcard{background:var(--card);border:1px solid var(--bo);border-radius:11px;padding:15px 17px}
+.kcard .lbl{font-size:10.5px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.kcard .val{font-size:24px;font-weight:600;font-family:'DM Mono',monospace}
+.kcard.money .val{color:var(--grn)}.kcard.count .val{color:var(--blu)}.kcard.avg .val{color:var(--amb)}
+.panel{background:var(--card);border:1px solid var(--bo);border-radius:12px;padding:18px;margin-top:16px}
+.panel h3{font-size:13px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.panel .phelp{font-size:11px;color:var(--t3);margin-bottom:14px}
+
+.tscroll{overflow-x:auto;border:1px solid var(--bo);border-radius:12px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--card2);color:var(--t2);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;padding:10px 8px;text-align:center;border-bottom:1px solid var(--bo);white-space:nowrap;position:sticky;top:0;z-index:3}
+thead th.l{text-align:left}
+tbody td{padding:6px 8px;border-bottom:1px solid var(--bo);text-align:center;vertical-align:middle}
+tbody tr:hover{background:rgba(41,121,255,.04)}tbody td.l{text-align:left}
+tbody input,tbody select{width:100%;text-align:center}tbody input.num{width:70px}tbody select.niv{width:52px;cursor:pointer}
+.calc{font-family:'DM Mono',monospace;font-weight:500}.calc.f{color:var(--t2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace}
+.b-0{background:rgba(229,57,53,.15);color:#ff6b68}.b-low{background:rgba(244,169,0,.15);color:var(--amb)}
+.b-ok{background:rgba(41,121,255,.15);color:#6aa5ff}.b-top{background:rgba(29,185,84,.15);color:#3fd977}
+.b-role{background:rgba(156,39,176,.15);color:#c77dd8;text-transform:none;letter-spacing:0}
+.b-yes{background:rgba(29,185,84,.15);color:#3fd977}.b-no{background:rgba(101,127,160,.12);color:var(--t2)}
+.b-act{background:rgba(41,121,255,.15);color:#6aa5ff}.b-baja{background:rgba(229,57,53,.15);color:#ff6b68}
+.del{background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 6px}.del:hover{color:var(--red)}
+.mini{background:transparent;border:1px solid var(--bo);color:var(--t2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer}.mini:hover{border-color:var(--blu);color:var(--tx)}
+
+.crit-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.crit-row .idx{width:22px;text-align:center;color:var(--t3);font-family:'DM Mono',monospace;font-size:12px}
+.crit-row input.name{flex:1;min-width:120px}.crit-row input.pct{width:80px;text-align:right}
+.factor-row{display:grid;grid-template-columns:24px 1fr 90px;gap:10px;align-items:center;margin-bottom:8px}
+.factor-row .fx-ico{font-size:15px;text-align:center}.factor-row input{width:100%}.factor-row input.fx-peso{text-align:right}
+.cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:11px;color:var(--t2)}.field .hint{font-size:10px;color:var(--t3)}
+.peso-ok{color:var(--grn);font-size:11px}.peso-warn{color:var(--red);font-size:11px;font-weight:500}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:10.5px;color:var(--t2)}.legend b{color:var(--tx)}
+.empty{text-align:center;padding:40px;color:var(--t3)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}#app{grid-template-columns:1fr}aside{position:static;height:auto}.filters .count{margin-left:0}}
+
+.guia{background:var(--card2);border:1px solid var(--bo2);border-radius:12px;padding:13px 16px;margin-bottom:14px}
+.guia:empty{display:none}
+.guia h4{font-size:13px;font-weight:700;margin-bottom:5px;color:var(--tx)}
+.guia .g-desc{font-size:11.5px;color:var(--t2);margin-bottom:10px;line-height:1.4}
+.guia .g-crits{display:flex;flex-wrap:wrap;gap:8px 20px}
+.guia .g-crit{font-size:11.5px;color:var(--t2);flex:1 1 260px}.guia .g-crit b{color:var(--tx)}
+.guia .g-levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:760px){.guia .g-levels{grid-template-columns:1fr 1fr}}
+.guia .g-lvl{border:1px solid var(--bo);border-radius:8px;padding:8px 10px;background:var(--bg);opacity:.72;transition:.12s}
+.guia .g-lvl.on{opacity:1;border-color:var(--blu);background:rgba(41,121,255,.1);box-shadow:0 0 0 1px var(--blu)}
+.guia .g-lvl .g-n{font-weight:700;font-size:11.5px}
+.guia .g-lvl .g-t{font-size:10.5px;color:var(--t2);margin-top:4px;line-height:1.4}
+.guia .g-n0{color:#ff6b68}.guia .g-n50{color:var(--amb)}.guia .g-n100{color:#6aa5ff}.guia .g-n125{color:#3fd977}
+.crit-card{border:1px solid var(--bo);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg)}
+.crit-head{display:flex;align-items:center;gap:10px}
+.crit-head .idx{width:22px;text-align:center;color:var(--t3);font-family:'DM Mono',monospace;font-size:12px}
+.crit-head input.name{flex:1;font-weight:600}
+.crit-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+@media(max-width:700px){.crit-levels{grid-template-columns:1fr}}
+.crit-lvl label{font-size:10px;color:var(--t2);display:block;margin-bottom:3px}
+.crit-lvl input{width:100%}
+.hide-sec .col-sec{display:none}
+.hide-ev .col-ev{display:none}
+.coltog{display:flex;gap:10px;align-items:center;font-size:11px;color:var(--t2)}
+.coltog .lbl{color:var(--t3);text-transform:uppercase;letter-spacing:.4px;font-size:10px}
+.coltog label{display:flex;gap:4px;align-items:center;cursor:pointer}
+.coltog input{width:auto;margin:0}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:900}
+.modal-box{background:var(--card);border:1px solid var(--bo);border-radius:14px;padding:24px;width:420px;max-height:90vh;overflow-y:auto}
+.modal-box h3{font-size:15px;margin-bottom:16px}.modal-box .field{margin-bottom:12px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-box .m-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+#toast-c{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.warn-banner{background:rgba(244,169,0,.08);border:1px solid rgba(244,169,0,.3);border-radius:9px;padding:10px 14px;font-size:11px;color:var(--amb);margin-bottom:16px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-box">
+    <h1>Bono de <span>Producción</span></h1>
+    <div class="sub">SICA Metalúrgica · Evaluación de incentivos</div>
+    <label>Usuario</label><input id="l-user" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    <label>Contraseña</label><input id="l-pass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-primary" onclick="doLogin()">Ingresar</button>
+    <div class="login-err" id="l-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <aside>
+    <div class="brand"><h1>Bono <span>Producción</span></h1><div class="sub">SICA Metalúrgica</div></div>
+    <nav id="nav"></nav>
+    <div class="userbox"><div class="u-name" id="u-name">—</div><div class="u-role" id="u-role">—</div>
+      <div class="u-sector" id="u-sector"></div><button class="btn-ghost" onclick="logout()">Cerrar sesión</button></div>
+  </aside>
+
+  <main>
+    <section class="sec" id="s-inicio">
+      <div class="sec-head"><div><h2>Inicio</h2><div class="desc">Estado del período</div></div><span class="period-pill" id="pill-inicio"></span></div>
+      <div class="grid kpis" id="inicio-kpis"></div>
+      <div class="panel"><h3>Accesos rápidos</h3><div class="phelp"></div><div class="sec-actions" id="inicio-quick"></div></div>
+      <div class="panel" id="inicio-avance"></div>
+    </section>
+
+    <!-- PERSONAL -->
+    <section class="sec" id="s-personal">
+      <div class="sec-head"><div><h2>Personal</h2><div class="desc">Nómina completa</div></div>
+        <div class="month-sel"><label>Mes:</label><input type="month" id="per-mes" onchange="setMes(this.value);rPersonal()"></div></div>
+      <div class="info-note" id="per-note"></div>
+      <div class="filters">
+        <input class="search txt" id="f-search" placeholder="Buscar por nombre o legajo…" oninput="rPersonal()">
+        <select id="f-sector" onchange="rPersonal()"></select>
+        <select id="f-evaluador" onchange="rPersonal()"></select>
+        <select id="f-estado" onchange="rPersonal()"><option value="">Estado (todos)</option><option>Activo</option><option>Baja</option></select>
+        <select id="f-spm" onchange="rPersonal()"><option value="">Participa SPM (todos)</option><option value="1">Sí participa</option><option value="0">No participa</option></select>
+        <span class="coltog"><span class="lbl">Ver:</span><label><input type="checkbox" class="col-sector" checked onchange="toggleCol('sector')">Sector</label><label><input type="checkbox" class="col-evaluador" checked onchange="toggleCol('evaluador')">Evaluador</label></span>
+        <span class="count" id="per-count"></span>
+        <button class="btn-ghost" onclick="exportMaestro()">↓ Maestro (xlsx)</button>
+        <button class="btn-ghost" onclick="importModal()">↑ Importar nómina</button>
+        <button class="btn-primary" onclick="personaModal()">+ Nueva persona (alta)</button>
+      </div>
+      <div class="tscroll"><table><thead><tr>
+        <th class="l">Legajo</th><th class="l">Nombre</th><th class="l col-sec">Sector</th><th class="l">Puesto</th>
+        <th class="col-ev">Evaluador</th><th>Tipo</th><th>SPM</th><th>Estado</th><th>Acceso</th><th></th></tr></thead>
+        <tbody id="tb-personal"></tbody></table></div>
+      <div class="empty" id="personal-empty" style="display:none">No hay personas que coincidan con el filtro.</div>
+    </section>
+
+    <!-- EVALUACIONES -->
+    <section class="sec" id="s-eval">
+      <div class="sec-head"><div><h2>Evaluaciones</h2><div class="desc" id="eval-desc"></div></div>
+        <div class="sec-actions"><span id="fin-estado" style="font-size:11px"></span>
+          <button class="btn-ok" id="btn-fin" onclick="finalizarEval()">✓ Finalizar mi evaluación</button>
+          <div class="month-sel"><label>Mes:</label><input type="month" id="ev-mes" onchange="setMes(this.value);rEval()"></div></div></div>
+      <div class="warn-banner" id="eval-scope"></div>
+      <div class="filters">
+        <input class="search txt" id="ef-search" placeholder="Buscar por nombre o legajo…" oninput="rEval()">
+        <select id="ef-sector" onchange="rEval()"></select>
+        <select id="ef-evaluador" onchange="rEval()"></select>
+        <span class="coltog"><span class="lbl">Ver:</span><label><input type="checkbox" class="col-sector" checked onchange="toggleCol('sector')">Sector</label><label id="ef-evtog-l"><input type="checkbox" class="col-evaluador" checked onchange="toggleCol('evaluador')">Evaluador</label></span>
+        <span class="count" id="eval-count"></span>
+        <span id="ev-horas-btns" style="display:flex;gap:8px"></span>
+      </div>
+      <div class="guia" id="guia-panel"></div>
+      <div class="tscroll"><table id="tbl-eval"><thead id="th-eval"></thead><tbody id="tb-eval"></tbody></table></div>
+      <div class="empty" id="eval-empty" style="display:none">No hay personal para evaluar con este filtro.</div>
+      <div class="legend" id="eval-legend"></div>
+    </section>
+
+    <section class="sec" id="s-dash">
+      <div class="sec-head"><div><h2>Dashboard</h2><div class="desc">Resumen del período (participantes SPM activos)</div></div><span class="period-pill" id="pill-dash"></span></div>
+      <div class="grid kpis" id="dash-kpis"></div>
+      <div class="charts"><div class="panel"><h3>Distribución de resultados</h3><canvas id="ch-dist" height="160"></canvas></div>
+        <div class="panel"><h3>Resultado promedio por sector</h3><canvas id="ch-sector" height="160"></canvas></div></div>
+    </section>
+
+    <section class="sec" id="s-res">
+      <div class="sec-head"><div><h2>Resultados</h2><div class="desc" id="res-desc"></div></div>
+        <div class="sec-actions"><span class="period-pill" id="pill-res"></span><button class="btn-ghost" onclick="exportXLSX()">↓ Exportar Excel</button></div></div>
+      <div class="filters">
+        <input class="search txt" id="rf-search" placeholder="Buscar por nombre o legajo…" oninput="rRes()">
+        <select id="rf-sector" onchange="rRes()"></select>
+        <select id="rf-evaluador" onchange="rRes()"></select>
+        <span class="coltog"><span class="lbl">Ver:</span><label><input type="checkbox" class="col-sector" checked onchange="toggleCol('sector')">Sector</label></span>
+        <span class="count" id="res-count"></span>
+      </div>
+      <div class="tscroll"><table id="tbl-res"><thead id="th-res"></thead><tbody id="tb-res"></tbody></table></div>
+      <div class="empty" id="res-empty" style="display:none">Sin datos para mostrar.</div>
+    </section>
+
+    <section class="sec" id="s-hist">
+      <div class="sec-head"><div><h2>Historial</h2><div class="desc">Períodos cerrados</div></div><div class="sec-actions" id="hist-actions"></div></div>
+      <div class="tscroll"><table><thead><tr><th class="l">Período</th><th>Empleados</th><th>Resultado prom.</th>
+        <th id="th-hist-money">Total incentivos $</th><th>Cerrado</th><th></th></tr></thead><tbody id="tb-hist"></tbody></table></div>
+      <div class="empty" id="hist-empty" style="display:none">Todavía no hay períodos cerrados.</div>
+    </section>
+
+    <!-- CALENDARIO LABORAL (admin) -->
+    <section class="sec" id="s-cal">
+      <div class="sec-head"><div><h2>Calendario laboral</h2><div class="desc">Define las horas productivas esperadas del mes según días trabajados y feriados</div></div>
+        <div class="month-sel"><label>Mes:</label><input type="month" id="cal-mes" onchange="setMes(this.value);rCal()"></div></div>
+      <div class="grid kpis" id="cal-kpis"></div>
+      <div class="panel"><h3>Jornada por tipo de día</h3>
+        <div class="phelp">Horas trabajadas y descanso según el día. Se aplican a todo el calendario; después podés ajustar días puntuales en la tabla.</div>
+        <div class="cfg-grid">
+          <div class="field"><label>Lunes a Jueves (hs)</label><input type="number" id="r-lunjue" step="0.5" oninput="setRegla('lunJue',this.value)"></div>
+          <div class="field"><label>Viernes (hs)</label><input type="number" id="r-vie" step="0.5" oninput="setRegla('vie',this.value)"></div>
+          <div class="field"><label>Sábado (hs)</label><input type="number" id="r-sab" step="0.5" oninput="setRegla('sab',this.value)"></div>
+          <div class="field"><label>Domingo (hs)</label><input type="number" id="r-dom" step="0.5" oninput="setRegla('dom',this.value)"></div>
+          <div class="field"><label>Descanso por día trabajado (hs)</label><input type="number" id="r-desc" step="0.5" oninput="setRegla('descanso',this.value)"></div>
+        </div></div>
+      <div class="panel"><h3>Feriados del año <span style="color:var(--t3);font-weight:400;text-transform:none;letter-spacing:0">— nacionales 2026 precargados, editables</span></h3>
+        <div class="phelp">Un día en esta lista cuenta 0 horas. Agregá los puentes turísticos o feriados provinciales si SICA no trabaja esos días. Fuente: argentina.gob.ar/feriados</div>
+        <div id="feriados-list"></div>
+        <button class="btn-ghost" onclick="addFeriado()" style="margin-top:6px">+ Feriado</button></div>
+      <div class="panel"><h3>Calendario del mes</h3>
+        <div class="phelp">Editá las horas de un día puntual (paro, media jornada, sábado trabajado) o marcalo como feriado. Recalcula al instante.</div>
+        <div class="tscroll" style="max-height:52vh"><table><thead><tr>
+          <th class="l">Fecha</th><th class="l">Día</th><th>Hs brutas</th><th>Descanso</th><th>Hs netas</th><th class="l">Tipo</th><th></th></tr></thead>
+          <tbody id="tb-cal"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-cfg">
+      <div class="sec-head"><div><h2>Configuración</h2><div class="desc">Parámetros, factores, criterios y escala de niveles</div></div></div>
+      <div class="panel"><h3>Período en curso</h3><div class="phelp">Las horas esperadas se calculan en el Calendario laboral según los días trabajados del mes.</div>
+        <div class="cfg-grid">
+          <div class="field"><label>Mes evaluado</label><input type="month" id="c-mes" onchange="onCfg()"></div>
+          <div class="field"><label>Hs brutas del mes</label><input id="c-hn" disabled></div>
+          <div class="field"><label>Descansos del mes</label><input id="c-desc" disabled></div>
+          <div class="field"><label>Hs esperadas base</label><input id="c-hsbase" disabled></div>
+        </div>
+        <button class="btn-ghost" onclick="goto('cal')" style="margin-top:12px">Editar en Calendario laboral →</button></div>
+      <div class="panel"><h3>Factores y ponderación</h3>
+        <div class="phelp">Nombre y peso de cada factor. Deben sumar 100%. El bono base es el % del sueldo que se modula por desempeño.</div>
+        <div class="field" style="max-width:200px;margin-bottom:14px"><label>Bono base (% del sueldo)</label><input type="number" id="c-base" step="0.5" oninput="onWeights()"></div>
+        <div id="factores-list"></div><div style="margin-top:6px"><span id="c-check" class="peso-ok">Σ = 100% ✓</span></div></div>
+      <div class="panel"><h3>Criterios — Predisposición (supervisores)</h3>
+        <div class="phelp">El factor Predisposición es el promedio de estos criterios.</div>
+        <div id="crit-pred"></div><button class="btn-ghost" onclick="addCrit('pred')" style="margin-top:6px">+ Criterio</button></div>
+      <div class="panel"><h3>Criterios — Seguridad, Orden y Limpieza (Seg&Higiene)</h3>
+        <div class="phelp">El factor S&H es el promedio de estos criterios, aplicado al 100% de los participantes.</div>
+        <div id="crit-sh"></div><button class="btn-ghost" onclick="addCrit('sh')" style="margin-top:6px">+ Criterio</button></div>
+      <div class="panel"><h3>Escala de niveles</h3>
+        <div class="warn-banner" style="margin:0 0 14px">Cambiar estos % recalcula TODOS los resultados del período en curso. El nivel con 100% es el valor por defecto de una evaluación nueva.</div>
+        <div id="niveles-list"></div>
+        <div class="sec-actions" style="margin-top:8px"><button class="btn-ghost" onclick="addNivel()">+ Nivel</button><button class="mini" onclick="resetNiveles()">Restaurar 0 / 50 / 100 / 125</button></div></div>
+      <div class="warn-banner" style="margin-top:16px">Cerrá el período actual en Historial antes de modificar factores, criterios o niveles, para no alterar evaluaciones en curso. Los períodos ya cerrados no se recalculan.</div>
+    </section>
+
+    <section class="sec" id="s-users">
+      <div class="sec-head"><div><h2>Usuarios y permisos</h2><div class="desc">Cuentas de acceso al sistema</div></div>
+        <div class="sec-actions">
+          <button class="btn-ok" onclick="genSupervisoresModal()">⚡ Generar supervisores desde la nómina</button>
+          <button class="btn-primary" onclick="userModal()">+ Usuario</button></div></div>
+      <div class="warn-banner">Este login separa qué ve cada rol, pero no es una barrera fuerte: alguien con el archivo puede ver el contenido con las herramientas del navegador.</div>
+      <div class="tscroll"><table><thead><tr><th class="l">Usuario</th><th class="l">Nombre</th><th>Rol</th><th class="l">Evaluador asignado</th><th>Personas a cargo</th><th></th></tr></thead><tbody id="tb-users"></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal"><div class="modal-box" id="modal-body"></div></div>
+<div id="toast-c"></div>
+
+<script src="api.js"></script>
+<script>
+/* ============ PERSISTENCIA ============ */
+const DB={save(k,d){localStorage.setItem(k,JSON.stringify(d))},load(k,def){try{return JSON.parse(localStorage.getItem(k))??def}catch{return def}},clear(k){localStorage.removeItem(k)}};
+const K={users:'bp5_users',pers:'bp5_personal',cfg:'bp5_cfg',crit:'bp5_criteria',cal:'bp5_calendar',eval:'bp5_eval',hist:'bp5_hist',fin:'bp5_fin',sess:'bp5_session'};
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return (h>>>0).toString(16)}
+function uid(){return Math.random().toString(36).slice(2,8)}
+function mul32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ============ ROLES ============ */
+const ROLES={
+  admin:{label:'Administrador (RRHH)',sees:['inicio','personal','eval','dash','res','hist','cal','cfg','users'],money:true,carga:'todo'},
+  supervisor:{label:'Supervisor',sees:['eval','res','hist'],money:false,carga:'pred',onlyMine:true},
+  produccion:{label:'Gerente de Producción',sees:['eval','res','hist','cal'],money:false,carga:'hs'},
+  syh:{label:'Seg. e Higiene',sees:['eval','res','hist'],money:false,carga:'sh'}
+};
+const NAV=[{id:'inicio',ico:'⌂',label:'Inicio'},{id:'personal',ico:'👥',label:'Personal'},
+  {id:'eval',ico:'✎',label:'Evaluaciones'},{id:'dash',ico:'▦',label:'Dashboard'},
+  {id:'res',ico:'$',label:'Resultados'},{id:'hist',ico:'🕑',label:'Historial'},
+  {id:'cal',ico:'📅',label:'Calendario'},
+  {id:'cfg',ico:'⚙',label:'Configuración'},{id:'users',ico:'🔑',label:'Usuarios y permisos'}];
+
+/* ============ NÓMINA DEMO (209, ~102 SPM) ============ */
+const APE=['ACOSTA','ACUÑA','ALBARENGA','ALVAREZ','AMBROGIO','ARENALES','ARGUELLO','ASTEZANO','BACHMEIER','BAUMANN','BELIS','BENITEZ','BRIZUELA','CABRERA','CACERES','CARDOZO','CASTRO','CENTENO','CORONEL','CRUZ','DELBINO','DIAZ','DOMINGUEZ','ESCOBAR','FERNANDEZ','FIGUEROA','FLORES','GAUNA','GIMENEZ','GOMEZ','GONZALEZ','GUZMAN','HEREDIA','IBARRA','JUAREZ','LEDESMA','LOPEZ','LUNA','MAIDANA','MANSILLA','MARTINEZ','MEDINA','MENDEZ','MERELES','MOLINA','MONTENEGRO','MORALES','MUÑOZ','NUÑEZ','OLGUIN','ORTIZ','OTTONELLI','PAEZ','PALACIOS','PEREYRA','PEREZ','QUIROGA','RAMIREZ','RIOS','RIVERO','RODRIGUEZ','ROJAS','ROMERO','SANCHEZ','SCHMIDT','SILVA','SORIA','SOSA','SUAREZ','TOLEDO','VEGA','VELAZQUEZ','VERON','VILLALBA','ZARATE','ZINGERLING'];
+const NOM=['ADRIAN','ALBERTO','ARIEL','BRIAN','CARLOS','CRISTIAN','DANIEL','DARIO','DIEGO','EDUARDO','EMILIANO','FABIAN','FEDERICO','FRANCO','GABRIEL','GERMAN','GUSTAVO','HERNAN','HUGO','JAVIER','JORGE','JOSE','JUAN','LEANDRO','LUCAS','LUIS','MARCELO','MARCOS','MARIANO','MARTIN','MATIAS','MAURO','NICOLAS','PABLO','RAMON','RAUL','RICARDO','ROBERTO','RODRIGO','SEBASTIAN','SERGIO','WALTER'];
+// sectores productivos (participan SPM) con su evaluador
+const PROD=[['Producción taller','Ottonelli',['Soldador','Armador','Trazador','Operador SAW','Amolador','Ayudante']],
+  ['Tanques en Serie','Foos',['Soldador','Trazador-Armador','Armador','Ayudante']],
+  ['Mantenimiento','Sánchez',['Mecánico','Electricista','Mant. vehículos','Ayudante']],
+  ['Pintura y Arenado','Astezano',['Pintor','Arenador','Ayudante']],
+  ['Trazado y Armado','Zingerling',['Trazador','Armador','Plegador']],
+  ['Logística y Grúas','Delbino',['Chofer de grúa','Autoelevadorista','Pañolero']]];
+const MENS=[['Administración',['Administrativo','Liquidador','Recepcionista']],['Calidad',['Inspector','Analista QA','Documentalista']],
+  ['Ingeniería',['Ingeniero','Proyectista','Dibujante']],['Compras',['Comprador','Analista compras']],
+  ['Ventas',['Vendedor','Asesor comercial']],['Depósito',['Depositante','Control stock']]];
+function genNomina(){
+  const rnd=mul32(20260901);const pick=a=>a[Math.floor(rnd()*a.length)];const list=[];let leg=1001;
+  const nm=()=>`${pick(APE)}, ${pick(NOM)} ${pick(NOM)}`;
+  // 102 participantes SPM (jornalizados) repartidos en sectores productivos
+  const cupos=[26,20,18,14,14,10]; // suma 102
+  PROD.forEach((s,i)=>{for(let k=0;k<cupos[i];k++){
+    const estado=(rnd()<0.03)?'Baja':'Activo';
+    list.push({leg:String(leg++),nom:nm(),sec:s[0],pue:pick(s[2]),evaluador:s[1],tipo:'Jornalizado',spm:1,estado,acceso:'—',sueldo:0});
+  }});
+  // 107 mensuales (no SPM)
+  let rem=107,mi=0;
+  while(rem>0){const s=MENS[mi%MENS.length];const estado=(rnd()<0.03)?'Baja':'Activo';
+    list.push({leg:String(leg++),nom:nm(),sec:s[0],pue:pick(s[1]),evaluador:'—',tipo:'Mensual',spm:0,estado,acceso:'—',sueldo:0});
+    rem--;mi++;}
+  return list;
+}
+
+/* ============ SEED ============ */
+/* ============ CALENDARIO / FERIADOS ============ */
+const FERIADOS_2026={
+  '2026-01-01':'Año Nuevo','2026-02-16':'Carnaval','2026-02-17':'Carnaval',
+  '2026-03-24':'Día Nacional de la Memoria por la Verdad y la Justicia',
+  '2026-04-02':'Día del Veterano y de los Caídos en Malvinas','2026-04-03':'Viernes Santo',
+  '2026-05-01':'Día del Trabajador','2026-05-25':'Día de la Revolución de Mayo',
+  '2026-06-15':'Paso a la Inmortalidad del Gral. Güemes','2026-06-20':'Paso a la Inmortalidad del Gral. Belgrano',
+  '2026-07-09':'Día de la Independencia','2026-08-17':'Paso a la Inmortalidad del Gral. San Martín',
+  '2026-10-12':'Día del Respeto a la Diversidad Cultural','2026-11-23':'Día de la Soberanía Nacional',
+  '2026-12-08':'Inmaculada Concepción de María','2026-12-25':'Navidad'};
+function defCalendar(){return{reglas:{lunJue:9,vie:8,sab:0,dom:0,descanso:1},feriados:{...FERIADOS_2026},dias:{}};}
+const DOW_ES=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+/* Rúbrica resumida del instructivo (editable en Configuración) */
+const DEFAULT_RUB={
+  p1:{desc:'Actúa por cuenta propia, toma la iniciativa y aporta mejoras sin esperar instrucciones.',rub:{
+    1:'Requiere supervisión constante y espera instrucciones detalladas; rara vez aporta ideas o soluciones.',
+    2:'Competente pero espera instrucciones antes de actuar; muestra iniciativa en ocasiones y necesita recordatorios.',
+    3:'Toma la iniciativa en situaciones nuevas sin supervisión; aporta ideas y soluciones para mejorar los procesos.',
+    4:'Busca constantemente oportunidades de mejorar e innovar; soluciones creativas y alto grado de autonomía.'}},
+  p2:{desc:'Interés y compromiso con la calidad del trabajo: presencia en el puesto, respeto y cuidado de herramientas.',rub:{
+    1:'Falta de interés y compromiso; fuera del puesto, uso de celular, no respeta a colegas ni cuida herramientas.',
+    2:'Interés moderado; su conducta a veces afecta la productividad, se ausenta del puesto o usa dispositivos personales.',
+    3:'Comprometido y puntual; siempre en su puesto, respetuoso con pares y supervisores, cuida herramientas y equipos.',
+    4:'Alto interés, compromiso y entusiasmo que contribuye significativamente a la productividad.'}},
+  p3:{desc:'Disposición a colaborar, comunicación y compromiso con el equipo y la empresa, incluso fuera del horario.',rub:{
+    1:'Falta de interés en colaborar; no se puede contar con él fuera de horario y su comunicación es mínima.',
+    2:'Colaboración ocasional, con dificultades o pasividad; baja disposición a participar más allá de su rol.',
+    3:'Colaboración constante y proactiva; comprometido con los valores de la empresa, se puede contar con él ante necesidad.',
+    4:'Colaborador destacado; soluciones creativas, siempre disponible, miembro muy valioso del equipo.'}},
+  s1:{desc:'Correcta gestión y disposición de los residuos en el sector.',rub:{
+    1:'No muestra preocupación por la gestión de residuos; requiere supervisión constante.',
+    2:'En ocasiones muestra interés y preocupación por la gestión de residuos.',
+    3:'Dispone los residuos de manera correcta y consistente en su sector.',
+    4:'Gestión de residuos ejemplar; promueve activamente buenas prácticas de disposición.'}},
+  s2:{desc:'Uso correcto y consistente de los elementos de protección personal.',rub:{
+    1:'No utiliza adecuadamente los EPP; ignora las normativas de seguridad.',
+    2:'Uso irregular de EPP; a veces sigue las normas pero en ocasiones se olvida.',
+    3:'Compromiso constante con las políticas de seguridad; participa en capacitación y concientización.',
+    4:'Contribuye a la prevención de incidentes y promueve una cultura de seguridad; incidentes muy bajos o nulos.'}},
+  s3:{desc:'Mantenimiento del orden y la limpieza del lugar de trabajo.',rub:{
+    1:'Lugar de trabajo en desorden y suciedad constante; no cumple las normas de limpieza y orden.',
+    2:'El lugar suele estar desordenado; cumple con limpieza y orden solo en algunas ocasiones.',
+    3:'Lugar generalmente limpio y organizado; cumple de manera consistente con las normas.',
+    4:'Lugar impecable y altamente organizado; promueve la limpieza y sirve de ejemplo para otros.'}}
+};
+function critWith(id,label){const d=DEFAULT_RUB[id]||{};return {id,label,desc:d.desc||'',rub:d.rub?{...d.rub}:{}};}
+function defCriteria(){return{base:15,  factores:{hs:{ico:'⏱',label:'Horas Productivas',peso:25},pred:{ico:'🤝',label:'Predisposición con la empresa',peso:50},sh:{ico:'🦺',label:'Seguridad, Orden y Limpieza',peso:25}},
+  pred:[critWith('p1','Iniciativa'),critWith('p2','Conducta'),critWith('p3','Colaboración')],
+  sh:[critWith('s1','Disposición de Residuos'),critWith('s2','Uso de EPP'),critWith('s3','Orden y Limpieza')],
+  niveles:[{n:1,pct:0,label:'No cumple'},{n:2,pct:50,label:'Regular'},{n:3,pct:100,label:'Esperado'},{n:4,pct:125,label:'Sobresaliente'}]};}
+/* completa desc/rub en criterios ya guardados sin perder ediciones de label */
+function migrateCrit(){let ch=false;['pred','sh'].forEach(g=>{(crit[g]||[]).forEach(c=>{
+  if(c.rub&&Object.keys(c.rub).length)return;
+  if(DEFAULT_RUB[c.id]){c.desc=c.desc||DEFAULT_RUB[c.id].desc;c.rub={...DEFAULT_RUB[c.id].rub};ch=true;}
+  else{c.desc=c.desc||'';c.rub=c.rub||{};}});});if(ch)DB.save(K.crit,crit);}
+function seed(){
+  if(!DB.load(K.users,null)) DB.save(K.users,[
+    {user:'admin',pass:hash('admin123'),name:'RRHH — Capital Humano',role:'admin',evaluador:''},
+    {user:'foos',pass:hash('foos123'),name:'José C. Foos',role:'supervisor',evaluador:'Foos'},
+    {user:'ottonelli',pass:hash('otto123'),name:'D. Ottonelli',role:'supervisor',evaluador:'Ottonelli'},
+    {user:'produccion',pass:hash('prod123'),name:'Gerencia de Producción',role:'produccion',evaluador:''},
+    {user:'schmidt',pass:hash('syh123'),name:'S. Schmidt — Seg&Higiene',role:'syh',evaluador:''}
+  ]);
+  if(!DB.load(K.pers,null)) DB.save(K.pers,genNomina());
+  if(!DB.load(K.cfg,null)) DB.save(K.cfg,{mes:defMes(),hn:176,desc:20});
+  if(!DB.load(K.crit,null)) DB.save(K.crit,defCriteria());
+  if(!DB.load(K.cal,null)) DB.save(K.cal,defCalendar());
+  if(!DB.load(K.eval,null)){ // precarga horas demo del mes para participantes activos
+    const m=defMes(),cr=defCriteria(),ev={};ev[m]={};const rnd=mul32(7);
+    DB.load(K.pers,[]).filter(p=>p.spm&&p.estado==='Activo').forEach(p=>{
+      const o={vac:0,real:Math.round(150+rnd()*70),pred:{},sh:{}};ev[m][p.leg]=o;});
+    DB.save(K.eval,ev);
+  }
+}
+function defMes(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function mesTxt(m){if(!m)return'';const[y,mm]=m.split('-');return `${MESES[+mm-1]} ${y}`;}
+
+let SESSION=null,users=[],personal=[],cfg={},crit={},cal={},evalData={},_hsCache={};
+let colView=DB.load('bp5_colview',{sector:true,evaluador:true});
+function applyColView(){const m=document.querySelector('main');if(!m)return;m.classList.toggle('hide-sec',!colView.sector);m.classList.toggle('hide-ev',!colView.evaluador);}
+function toggleCol(k){colView[k]=!colView[k];DB.save('bp5_colview',colView);applyColView();syncColToggles();}
+function syncColToggles(){document.querySelectorAll('.col-sector').forEach(c=>c.checked=colView.sector);document.querySelectorAll('.col-evaluador').forEach(c=>c.checked=colView.evaluador);}
+function reload(){users=DB.load(K.users,[]);personal=DB.load(K.pers,[]);cfg=DB.load(K.cfg,{});crit=DB.load(K.crit,defCriteria());cal=DB.load(K.cal,defCalendar());evalData=DB.load(K.eval,{});_hsCache={};migrateCrit();}
+function setMes(m){cfg.mes=m;DB.save(K.cfg,cfg);syncMesInputs();}
+function syncMesInputs(){['per-mes','ev-mes','c-mes','cal-mes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=cfg.mes;});}
+
+/* ============ AUTH ============ */
+function doLogin(){const u=document.getElementById('l-user').value.trim(),p=document.getElementById('l-pass').value;
+  const us=DB.load(K.users,[]).find(x=>x.user===u);
+  if(!us||us.pass!==hash(p)){document.getElementById('l-err').textContent='Usuario o contraseña incorrectos';return;}
+  SESSION={user:us.user,name:us.name,role:us.role,evaluador:us.evaluador};DB.save(K.sess,SESSION);startApp();}
+function logout(){DB.clear(K.sess);location.reload();}
+function startApp(){reload();
+  document.getElementById('login').style.display='none';document.getElementById('app').style.display='grid';
+  document.getElementById('u-name').textContent=SESSION.name;document.getElementById('u-role').textContent=ROLES[SESSION.role].label;
+  document.getElementById('u-sector').textContent=SESSION.evaluador?('Evalúa: '+SESSION.evaluador):'';
+  buildNav();syncMesInputs();goto(ROLES[SESSION.role].sees[0]);}
+
+/* ============ NAV ============ */
+function buildNav(){const perm=ROLES[SESSION.role],nav=document.getElementById('nav');nav.innerHTML='';
+  NAV.filter(n=>perm.sees.includes(n.id)).forEach(n=>{const d=document.createElement('div');d.className='nav-item';d.id='nav-'+n.id;d.onclick=()=>goto(n.id);
+    d.innerHTML=`<span class="ico">${n.ico}</span>${n.label}`;nav.appendChild(d);});}
+function goto(id){if(!ROLES[SESSION.role].sees.includes(id))return;
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');const ni=document.getElementById('nav-'+id);if(ni)ni.classList.add('active');
+  renderMap[id]&&renderMap[id]();applyColView();syncColToggles();}
+
+/* ============ CÁLCULO ============ */
+function nf(n){const lv=crit.niveles.find(x=>x.n==n);return lv?(+lv.pct||0)/100:0;}
+function defaultNivel(){const e=crit.niveles.find(x=>+x.pct===100);return e?e.n:(crit.niveles[0]?.n||1);}
+function daysOfMonth(mes){const[y,m]=mes.split('-').map(Number);const n=new Date(y,m,0).getDate();const arr=[];
+  for(let d=1;d<=n;d++){arr.push({d,iso:`${mes}-${String(d).padStart(2,'0')}`,dow:new Date(y,m-1,d).getDay()});}return arr;}
+function dayInfo(iso,dow){const R=cal.reglas;const ov=cal.dias[iso];
+  if(ov){const netas=Math.max((+ov.brutas||0)-(+ov.desc||0),0);return {brutas:+ov.brutas||0,desc:+ov.desc||0,netas,tipo:'Especial',nombre:ov.nombre||''};}
+  if(cal.feriados[iso])return {brutas:0,desc:0,netas:0,tipo:'Feriado',nombre:cal.feriados[iso]};
+  let brutas=dow===0?R.dom:dow===6?R.sab:dow===5?R.vie:R.lunJue;brutas=+brutas||0;
+  const desc=brutas>0?(+R.descanso||0):0;const netas=Math.max(brutas-desc,0);
+  const tipo=(dow===0||dow===6)?'Fin de semana':(brutas>0?'Hábil':'No laboral');
+  return {brutas,desc,netas,tipo,nombre:''};}
+function calTotals(mes){let brutas=0,desc=0,netas=0,dias=0;
+  daysOfMonth(mes).forEach(({iso,dow})=>{const i=dayInfo(iso,dow);brutas+=i.brutas;desc+=i.desc;netas+=i.netas;if(i.netas>0)dias++;});
+  return {brutas,desc,netas,dias};}
+function hsBase(){if(_hsCache[cfg.mes]==null)_hsCache[cfg.mes]=calTotals(cfg.mes).netas;return _hsCache[cfg.mes];}
+function avgCrit(store,list){if(!list.length)return 0;let s=0;list.forEach(c=>s+=nf(store?.[c.id]));return s/list.length;}
+function calcRow(leg){const e=evalData[cfg.mes]?.[leg]||{};const p=personal.find(x=>x.leg===leg)||{};
+  const hsEsp=Math.max(hsBase()-(+e.vac||0),0);const real=+e.real||0;
+  const fHs=hsEsp>0?Math.min(real/hsEsp,1.25):0;const fPr=avgCrit(e.pred,crit.pred);const fSh=avgCrit(e.sh,crit.sh);
+  const base=(+crit.base||0)/100,wHs=(+crit.factores.hs.peso||0)/100,wPr=(+crit.factores.pred.peso||0)/100,wSh=(+crit.factores.sh.peso||0)/100;
+  const res=real>0?base*(wHs*fHs+wPr*fPr+wSh*fSh):0;return {hsEsp,real,fHs,fPr,fSh,res,inc:(+p.sueldo||0)*res,e,p};}
+function badge(res,real){const pct=(res*100).toFixed(2)+'%';let c='b-ok';const base=(+crit.base||0)/100;
+  if(real===0||res===0)c='b-0';else if(res<base*0.75)c='b-low';else if(res>=base*1.10)c='b-top';return `<span class="badge ${c} calc">${pct}</span>`;}
+/* resultado de UN factor (0..1.25) como %, para la vista del evaluador que lo carga */
+function factorBadge(f){const pct=(f*100).toFixed(0)+'%';let c='b-ok';
+  if(f===0)c='b-0';else if(f<1)c='b-low';else if(f>1)c='b-top';return `<span class="badge ${c} calc">${pct}</span>`;}
+function resPropio(c,carga){return carga==='pred'?c.fPr:carga==='sh'?c.fSh:carga==='hs'?c.fHs:null;}
+function ordNom(a,b){return (a.nom||'').localeCompare(b.nom||'','es',{sensitivity:'base'});}
+function fmt$(n){return '$'+Math.round(n||0).toLocaleString('es-AR')}
+function getE(leg){evalData[cfg.mes]=evalData[cfg.mes]||{};
+  if(!evalData[cfg.mes][leg]){evalData[cfg.mes][leg]={vac:0,real:0,pred:{},sh:{}};}
+  const e=evalData[cfg.mes][leg];e.pred=e.pred||{};e.sh=e.sh||{};return e;}
+function setE(leg,f,v){const e=getE(leg);e[f]=(f==='vac'||f==='real')?(v===''?0:+v):v;DB.save(K.eval,evalData);}
+function setSub(leg,grp,cid,v){const e=getE(leg);e[grp][cid]=(v===''?0:+v);DB.save(K.eval,evalData);}
+function setCom(leg,grp,v){const e=getE(leg);e.com=e.com||{};e.com[grp]=v;DB.save(K.eval,evalData);}
+/* nivel "Esperado" = el que vale 100% */
+function nivelEsperado(){const e=crit.niveles.find(x=>+x.pct===100);return e?e.n:3;}
+/* ¿este evaluador puso algún nivel != Esperado y no dejó comentario? */
+function faltaJustificar(leg,grp){const e=evalData[cfg.mes]?.[leg];if(!e)return false;
+  const esp=nivelEsperado();const store=e[grp]||{};const list=(grp==='pred'?crit.pred:crit.sh);
+  const hayDesvio=list.some(c=>{const v=store[c.id];return v!==undefined&&v!==''&&+v!==esp;});
+  const com=(e.com&&e.com[grp]||'').trim();
+  return hayDesvio&&!com;}
+
+/* participantes evaluables (SPM=1, Activo) según rol */
+function normEv(s){return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function apellidoEv(s){return normEv(s).split(',')[0].trim().split(/\s+/)[0]||'';}
+function sameEv(a,b){const na=normEv(a),nb=normEv(b);if(!nb||nb==='—')return false;
+  if(na===nb)return true; /* coincidencia exacta */
+  const pa=apellidoEv(a),pb=apellidoEv(b);return pa!==''&&pa===pb; /* o por apellido: "Ottonelli" ~ "OTTONELLI, DARIO RUBEN" */}
+function evaluables(){const perm=ROLES[SESSION.role];
+  let l=personal.filter(p=>p.spm&&p.estado==='Activo');
+  if(perm.onlyMine)l=l.filter(p=>sameEv(p.evaluador,SESSION.evaluador));
+  return l;}
+
+/* ============ FILTROS ============ */
+function uniq(list,key){return [...new Set(list.map(x=>x[key]).filter(v=>v&&v!=='—'))].sort();}
+function fillSelect(id,vals,label,cur){const s=document.getElementById(id);if(!s)return;const v=cur??s.value;
+  s.innerHTML=`<option value="">${label}</option>`+vals.map(x=>`<option ${v===x?'selected':''}>${esc(x)}</option>`).join('');}
+function textMatch(p,q){if(!q)return true;q=q.toLowerCase();return p.nom.toLowerCase().includes(q)||String(p.leg).includes(q);}
+
+/* ============ INICIO ============ */
+function rInicio(){document.getElementById('pill-inicio').textContent=mesTxt(cfg.mes);
+  const parts=personal.filter(p=>p.spm&&p.estado==='Activo');const ev=evalData[cfg.mes]||{};let done=0;parts.forEach(p=>{const e=ev[p.leg];if(e&&+e.real>0)done++;});
+  document.getElementById('inicio-kpis').innerHTML=`
+    <div class="kcard count"><div class="lbl">Nómina total</div><div class="val">${personal.length}</div></div>
+    <div class="kcard avg"><div class="lbl">Participan SPM (activos)</div><div class="val">${parts.length}</div></div>
+    <div class="kcard"><div class="lbl">Con horas cargadas</div><div class="val">${done}</div></div>`;
+  document.getElementById('inicio-quick').innerHTML=`<button class="btn-primary" onclick="goto('eval')">Cargar Evaluaciones</button>
+    <button class="btn-ghost" onclick="goto('personal')">Ver Personal</button><button class="btn-ghost" onclick="goto('res')">Ver Resultados</button>`;
+  renderAvance();}
+function renderAvance(){const box=document.getElementById('inicio-avance');if(!box)return;
+  const fin=DB.load(K.fin,{});const fm=fin[cfg.mes]||{};
+  const evs=users.filter(u=>['produccion','supervisor','syh'].includes(u.role));
+  const finKeyOf=u=>u.role==='supervisor'?('sup:'+u.user):('rol:'+u.role);
+  let done=0;const rows=evs.map(u=>{const f=fm[finKeyOf(u)];if(f)done++;
+    return `<tr><td class="l">${esc(u.name)}</td><td>${ROLES[u.role].label}</td>
+      <td>${f?`<span class="badge b-top">✓ Finalizó ${mesTxt(cfg.mes)}</span> <span style="font-size:10px;color:var(--t2)">${f.ts}</span>`:'<span class="badge b-low">Pendiente</span>'}</td></tr>`;}).join('');
+  box.innerHTML=`<h3>Avance de evaluaciones · ${mesTxt(cfg.mes)}</h3>
+    <div class="phelp">${done} de ${evs.length} evaluadores marcaron su evaluación como finalizada.</div>
+    <div class="tscroll"><table><thead><tr><th class="l">Evaluador</th><th>Rol</th><th class="l">Estado</th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:20px">No hay evaluadores cargados en Usuarios.</td></tr>'}</tbody></table></div>`;}
+
+/* ============ PERSONAL ============ */
+function rPersonal(){
+  const spmSi=personal.filter(p=>p.spm).length;
+  document.getElementById('per-note').innerHTML=`La nómina de ejemplo viene de la SPM vigente (<b>${personal.length} personas</b>, <b>${spmSi} con Participa SPM = 1</b>). Es punto de partida editable: dala de alta, modificala o date de baja según tu nómina real.`;
+  fillSelect('f-sector',uniq(personal,'sec'),'Sector (todos)');
+  fillSelect('f-evaluador',uniq(personal,'evaluador'),'Evaluador (todos)');
+  const q=document.getElementById('f-search').value,fs=document.getElementById('f-sector').value,fe=document.getElementById('f-evaluador').value,
+    fest=document.getElementById('f-estado').value,fspm=document.getElementById('f-spm').value;
+  const rows=personal.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)&&(!fest||p.estado===fest)&&(fspm===''||String(p.spm)===fspm)).sort(ordNom);
+  document.getElementById('per-count').innerHTML=`<b>${rows.length}</b> ${rows.length===1?'persona':'personas'}${rows.length!==personal.length?` de ${personal.length}`:''}`;
+  document.getElementById('personal-empty').style.display=rows.length?'none':'block';
+  const tb=document.getElementById('tb-personal');tb.innerHTML='';
+  rows.forEach(p=>{const i=personal.indexOf(p);const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="l mono">${p.leg}</td><td class="l">${esc(p.nom)}</td><td class="l col-sec">${esc(p.sec)}</td><td class="l">${esc(p.pue)}</td>
+      <td class="col-ev">${esc(p.evaluador)}</td><td>${esc(p.tipo)}</td>
+      <td>${p.spm?'<span class="badge b-yes">Sí</span>':'<span class="badge b-no">No</span>'}</td>
+      <td>${p.estado==='Activo'?'<span class="badge b-act">Activo</span>':'<span class="badge b-baja">Baja</span>'}</td>
+      <td>${p.acceso&&p.acceso!=='—'?`<span class="badge b-role">${esc(p.acceso)}</span>`:'<span style="color:var(--t3)">—</span>'}</td>
+      <td><button class="mini" onclick="personaModal(${i})">Editar</button><button class="del" onclick="delPersona(${i})">✕</button></td>`;
+    tb.appendChild(tr);});}
+function personaModal(i){const edit=(typeof i==='number');const p=edit?personal[i]:{leg:'',nom:'',sec:'',pue:'',evaluador:'',tipo:'Jornalizado',spm:1,estado:'Activo',acceso:'—',sueldo:0};
+  const secs=uniq(personal,'sec'),evs=uniq(personal,'evaluador');
+  const secOpts=[...new Set([...secs,p.sec].filter(Boolean))].map(s=>`<option ${p.sec===s?'selected':''}>${esc(s)}</option>`).join('');
+  const evOpts=['—',...evs.filter(e=>e!=='—')];const evSel=[...new Set([...evOpts,p.evaluador].filter(Boolean))].map(e=>`<option ${p.evaluador===e?'selected':''}>${esc(e)}</option>`).join('');
+  document.getElementById('modal-body').innerHTML=`<h3>${edit?'Editar persona':'Alta de persona'}</h3>
+    <div class="modal-grid">
+      <div class="field"><label>Legajo</label><input id="p-leg" value="${esc(p.leg)}"></div>
+      <div class="field"><label>Tipo</label><select id="p-tipo"><option ${p.tipo==='Jornalizado'?'selected':''}>Jornalizado</option><option ${p.tipo==='Mensual'?'selected':''}>Mensual</option></select></div>
+    </div>
+    <div class="field"><label>Apellido y Nombre</label><input class="txt" id="p-nom" value="${esc(p.nom)}"></div>
+    <div class="modal-grid">
+      <div class="field"><label>Sector</label><input class="txt" id="p-sec" list="dl-sec" value="${esc(p.sec)}"><datalist id="dl-sec">${secOpts}</datalist></div>
+      <div class="field"><label>Puesto</label><input class="txt" id="p-pue" value="${esc(p.pue)}"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="field"><label>Evaluador</label><input class="txt" id="p-eval" list="dl-ev" value="${esc(p.evaluador)}"><datalist id="dl-ev">${evSel}</datalist></div>
+      <div class="field"><label>Participa SPM</label><select id="p-spm"><option value="1" ${p.spm?'selected':''}>Sí</option><option value="0" ${!p.spm?'selected':''}>No</option></select></div>
+    </div>
+    <div class="modal-grid">
+      <div class="field"><label>Estado</label><select id="p-estado"><option ${p.estado==='Activo'?'selected':''}>Activo</option><option ${p.estado==='Baja'?'selected':''}>Baja</option></select></div>
+      <div class="field"><label>Acceso al sistema</label><select id="p-acceso">${['—','Supervisor','Seg&Higiene','Admin'].map(a=>`<option ${p.acceso===a?'selected':''}>${a}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>Sueldo base $ — solo para simular el incentivo en pesos (opcional)</label><input type="number" id="p-sueldo" value="${p.sueldo||0}"></div>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="savePersona(${edit?i:-1})">Guardar</button></div>`;
+  document.getElementById('modal').style.display='flex';}
+function savePersona(i){const g=id=>document.getElementById(id).value;
+  const o={leg:g('p-leg').trim(),nom:g('p-nom').trim(),sec:g('p-sec').trim(),pue:g('p-pue').trim(),evaluador:g('p-eval').trim()||'—',
+    tipo:g('p-tipo'),spm:+g('p-spm'),estado:g('p-estado'),acceso:g('p-acceso'),sueldo:+g('p-sueldo')||0};
+  if(!o.leg||!o.nom){toast('Legajo y nombre obligatorios','err');return;}
+  if(i>=0)personal[i]=o;else{if(personal.find(x=>x.leg===o.leg)){toast('Ese legajo ya existe','err');return;}personal.push(o);}
+  DB.save(K.pers,personal);closeModal();rPersonal();toast(i>=0?'Persona actualizada':'Persona dada de alta');}
+function delPersona(i){if(!confirm('¿Eliminar de la nómina? (para inactivar, mejor poné Estado = Baja)'))return;personal.splice(i,1);DB.save(K.pers,personal);rPersonal();toast('Eliminado','warn');}
+
+/* ============ EVALUACIONES ============ */
+function rEval(){const perm=ROLES[SESSION.role],carga=perm.carga;const F=crit.factores;
+  let desc='',scope='';
+  if(carga==='todo'){desc='Carga completa de todos los factores';scope=`Administrador: cargás ${F.hs.label}, ${F.pred.label} y ${F.sh.label} de los participantes SPM activos.`;}
+  else if(carga==='pred'){desc=crit.pred.map(c=>c.label).join(' · ');scope=`Supervisor: evaluás ${F.pred.label} de las personas donde figurás como Evaluador ("${SESSION.evaluador}").`;}
+  else if(carga==='sh'){desc=crit.sh.map(c=>c.label).join(' · ');scope=`Seguridad e Higiene: evaluás ${F.sh.label} del 100% de los participantes SPM activos.`;}
+  else if(carga==='hs'){desc='Vacaciones · Horas esperadas · Horas reales';scope=`Gerente de Producción: cargás ${F.hs.label} (vacaciones y horas reales) del 100% de los participantes SPM activos.`;}
+  document.getElementById('eval-desc').textContent=desc;document.getElementById('eval-scope').textContent=scope;
+  document.getElementById('eval-legend').innerHTML=`<span><b>Niveles:</b> ${crit.niveles.map(l=>`${l.n} = ${esc(l.label)} (${l.pct}%)`).join(' · ')}</span>`;
+
+  let base=evaluables();
+  // filtros (solo mostrar sector/evaluador cuando aportan)
+  const showEvFilter=!perm.onlyMine; // supervisor ya está acotado
+  document.getElementById('ef-evaluador').style.display=showEvFilter?'':'none';
+  fillSelect('ef-sector',uniq(base,'sec'),'Sector (todos)');
+  if(showEvFilter)fillSelect('ef-evaluador',uniq(base,'evaluador'),'Evaluador (todos)');
+  const q=document.getElementById('ef-search').value,fs=document.getElementById('ef-sector').value,fe=showEvFilter?document.getElementById('ef-evaluador').value:'';
+  const people=base.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)).sort(ordNom);
+  document.getElementById('eval-count').innerHTML=`<b>${people.length}</b> a evaluar`;
+  document.getElementById('ev-horas-btns').innerHTML=(carga==='hs')?`<button class="btn-ghost" onclick="exportHoras()">↓ Maestro de horas (xlsx)</button><button class="btn-ghost" onclick="importHorasModal()">↑ Importar horas</button>`
+    :(carga==='sh')?`<button class="btn-ghost" onclick="exportSH()">↓ Maestro S&H (xlsx)</button><button class="btn-ghost" onclick="importSHModal()">↑ Importar S&H</button>`:'';
+  const emptyEl=document.getElementById('eval-empty');emptyEl.style.display=people.length?'none':'block';
+  if(!people.length){
+    emptyEl.innerHTML = (perm.onlyMine&&base.length===0)
+      ? `No hay personal con <b>Evaluador = "${esc(SESSION.evaluador)}"</b> entre los participantes SPM activos.<br>Pedile al Administrador que te asigne personal: en <b>Personal</b>, cada persona tuya debe tener ese nombre en la columna Evaluador (o cargalo al importar la nómina).`
+      : 'No hay personal para evaluar con este filtro.';
+  }
+
+  const showHs=(carga==='todo'||carga==='hs'),showPr=(carga==='todo'||carga==='pred'),showSh=(carga==='todo'||carga==='sh');
+  const comGrp=(carga==='pred')?'pred':(carga==='sh')?'sh':null; /* qué comentario carga este evaluador */
+  let th='<tr><th class="l">Legajo</th><th class="l">Nombre</th><th class="l col-sec">Sector</th>';
+  if(!perm.onlyMine)th+='<th class="col-ev">Evaluador</th>';
+  if(showHs)th+='<th>Vac</th><th>Hs esp.</th><th>Hs reales</th><th>F.Hs</th>';
+  if(showPr)th+=crit.pred.map(c=>`<th>${esc(c.label)}</th>`).join('')+'<th>F.Pred</th>';
+  if(showSh)th+=crit.sh.map(c=>`<th>${esc(c.label)}</th>`).join('')+'<th>F.S&H</th>';
+  th+='<th>Resultado</th>';
+  if(comGrp)th+='<th class="l">Observaciones</th>';
+  th+='</tr>';document.getElementById('th-eval').innerHTML=th;
+
+  const tb=document.getElementById('tb-eval');tb.innerHTML='';
+  people.forEach(p=>{getE(p.leg);const c=calcRow(p.leg);
+    const falta=comGrp&&faltaJustificar(p.leg,comGrp);
+    let row=`<td class="l mono">${p.leg}</td><td class="l">${esc(p.nom)}</td><td class="l col-sec">${esc(p.sec)}</td>`;
+    if(!perm.onlyMine)row+=`<td class="col-ev">${esc(p.evaluador)}</td>`;
+    if(showHs)row+=`<td><input class="num" type="number" step="0.5" value="${c.e.vac||0}" oninput="onHoras('${p.leg}','vac',this.value)"></td>
+      <td class="calc f" id="hse_${p.leg}">${c.hsEsp}</td><td><input class="num" type="number" step="0.5" value="${c.e.real||0}" oninput="onHoras('${p.leg}','real',this.value)"></td><td class="calc f" id="fhs_${p.leg}">${c.fHs.toFixed(3)}</td>`;
+    if(showPr)row+=crit.pred.map(cc=>nivSel(p.leg,'pred',cc.id,c.e.pred?.[cc.id])).join('')+`<td class="calc f" id="fpr_${p.leg}">${c.fPr.toFixed(3)}</td>`;
+    if(showSh)row+=crit.sh.map(cc=>nivSel(p.leg,'sh',cc.id,c.e.sh?.[cc.id])).join('')+`<td class="calc f" id="fsh_${p.leg}">${c.fSh.toFixed(3)}</td>`;
+    row+=`<td id="resu_${p.leg}">${carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga))}</td>`;
+    if(comGrp){const com=esc(c.e.com&&c.e.com[comGrp]||'');
+      row+=`<td class="l"><input class="txt" id="com_${p.leg}" style="min-width:180px${falta?';border-color:var(--amb)':''}" value="${com}" placeholder="${falta?'⚠ Justificá la nota ≠ Esperado':'Observaciones (opcional)'}" onchange="setCom('${p.leg}','${comGrp}',this.value);onComChange('${p.leg}','${comGrp}')"></td>`;}
+    const tr=document.createElement('tr');tr.id='row_'+p.leg;if(falta)tr.style.background='rgba(244,169,0,.06)';tr.innerHTML=row;tb.appendChild(tr);});
+  guiaInit(carga);renderFinEstado();}
+function nivSel(leg,grp,cid,v){const val=(v===undefined||v===null||v==='')?'':v;let o=`<option value="" ${val===''?'selected':''}>—</option>`;crit.niveles.forEach(l=>o+=`<option value="${l.n}" ${val==l.n?'selected':''}>${l.n}</option>`);
+  return `<td><select class="niv" onfocus="guiaFocus('${grp}','${cid}','${val}')" onchange="onCritChange('${leg}','${grp}','${cid}',this.value)">${o}</select></td>`;}
+
+/* cambio de nivel: guarda y actualiza SOLO esa fila + el panel guía (sin re-render, sin perder scroll) */
+function onCritChange(leg,grp,cid,val){setSub(leg,grp,cid,val);
+  const perm=ROLES[SESSION.role],carga=perm.carga;const c=calcRow(leg);
+  const fEl=document.getElementById((grp==='pred'?'fpr_':'fsh_')+leg);if(fEl)fEl.textContent=(grp==='pred'?c.fPr:c.fSh).toFixed(3);
+  const resu=document.getElementById('resu_'+leg);if(resu)resu.innerHTML=carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga));
+  const comGrp=(carga==='pred')?'pred':(carga==='sh')?'sh':null;
+  if(comGrp===grp){const falta=faltaJustificar(leg,grp);const tr=document.getElementById('row_'+leg);if(tr)tr.style.background=falta?'rgba(244,169,0,.06)':'';
+    const com=document.getElementById('com_'+leg);if(com){com.style.borderColor=falta?'var(--amb)':'';com.placeholder=falta?'⚠ Justificá la nota ≠ Esperado':'Observaciones (opcional)';}}
+  guiaShow(grp,cid,val);}
+
+/* ---- Panel guía ---- */
+function nivColorClass(pct){return pct===0?'g-n0':pct===50?'g-n50':pct===100?'g-n100':pct>=125?'g-n125':'';}
+function guiaShow(grp,cid,nivelOn){const panel=document.getElementById('guia-panel');if(!panel)return;
+  const c=(crit[grp]||[]).find(x=>x.id===cid);if(!c){guiaResumen(grp);return;}
+  let h=`<h4>${esc(c.label)} <span style="font-weight:400;color:var(--t2);font-size:11px">· ${esc(crit.factores[grp].label)}</span></h4>`;
+  if(c.desc)h+=`<div class="g-desc">${esc(c.desc)}</div>`;
+  h+='<div class="g-levels">';
+  crit.niveles.forEach(l=>{const t=(c.rub&&c.rub[l.n])||'';const on=(nivelOn!=null&&nivelOn!==''&&+nivelOn===l.n);
+    h+=`<div class="g-lvl ${on?'on':''}"><div class="g-n ${nivColorClass(+l.pct)}">${l.n} · ${esc(l.label)} (${l.pct}%)</div>${t?`<div class="g-t">${esc(t)}</div>`:''}</div>`;});
+  h+='</div>';panel.innerHTML=h;}
+function guiaFocus(grp,cid,val){guiaShow(grp,cid,val);}
+/* comentario: guarda (ya hecho) y refresca solo la marca de esa fila */
+function onComChange(leg,grp){const falta=faltaJustificar(leg,grp);const tr=document.getElementById('row_'+leg);
+  if(tr)tr.style.background=falta?'rgba(244,169,0,.06)':'';
+  const com=document.getElementById('com_'+leg);if(com){com.style.borderColor=falta?'var(--amb)':'';com.placeholder=falta?'⚠ Justificá la nota ≠ Esperado':'Observaciones (opcional)';}}
+function guiaResumen(grp){const panel=document.getElementById('guia-panel');if(!panel)return;
+  const list=crit[grp]||[];if(!list.length){panel.innerHTML='';return;}
+  let h=`<h4>Estás evaluando: ${esc(crit.factores[grp].label)}</h4><div class="g-crits">`;
+  list.forEach(c=>h+=`<div class="g-crit"><b>${esc(c.label)}</b>${c.desc?' — '+esc(c.desc):''}</div>`);
+  h+=`</div><div class="g-desc" style="margin-top:9px">Posicionate en un criterio para ver la guía de puntuación. Cada evaluación arranca sin puntuar (—): elegí expresamente el nivel que corresponda.</div>`;
+  panel.innerHTML=h;}
+function guiaInit(carga){const panel=document.getElementById('guia-panel');if(!panel)return;
+  if(carga==='pred')guiaResumen('pred');else if(carga==='sh')guiaResumen('sh');
+  else if(carga==='todo')panel.innerHTML=`<div class="g-desc">Vista de consolidación. Al posicionarte en un criterio de Predisposición o S&H verás su guía de puntuación.</div>`;
+  else panel.innerHTML='';}
+
+/* carga fluida de horas: guarda y actualiza solo esa fila, sin re-render (mantiene el foco) */
+function onHoras(leg,campo,val){setE(leg,campo,val);const carga=ROLES[SESSION.role].carga;const c=calcRow(leg);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('hse_'+leg,c.hsEsp);set('fhs_'+leg,c.fHs.toFixed(3));
+  const resu=document.getElementById('resu_'+leg);if(resu)resu.innerHTML=carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga));}
+
+/* ---- Finalizar mi evaluación (blando, sin bloquear) ---- */
+function finKey(){return SESSION.role==='supervisor'?('sup:'+SESSION.user):('rol:'+SESSION.role);}
+function renderFinEstado(){
+  const btn=document.getElementById('btn-fin'),est=document.getElementById('fin-estado');
+  if(ROLES[SESSION.role].carga==='todo'){if(btn)btn.style.display='none';if(est)est.textContent='';return;} /* admin no finaliza */
+  if(btn)btn.style.display='';
+  const fin=DB.load(K.fin,{});const f=fin[cfg.mes]&&fin[cfg.mes][finKey()];
+  if(f){est.innerHTML=`<span class="badge b-ok">✓ Finalizada ${f.ts}</span>`;btn.textContent='Re-finalizar';}
+  else{est.textContent='';btn.textContent='✓ Finalizar mi evaluación';}
+}
+function finalizarEval(){
+  const fin=DB.load(K.fin,{});fin[cfg.mes]=fin[cfg.mes]||{};
+  fin[cfg.mes][finKey()]={ts:new Date().toLocaleString('es-AR'),por:SESSION.name};
+  DB.save(K.fin,fin);renderFinEstado();
+  toast('Evaluación marcada como finalizada. Podés seguir editando si hace falta.');
+}
+
+/* ============ DASHBOARD ============ */
+let chDist,chSec;
+function rDash(){document.getElementById('pill-dash').textContent=mesTxt(cfg.mes);
+  const people=personal.filter(p=>p.spm&&p.estado==='Activo'&&calcRow(p.leg).real>0);let tRes=0,tMoney=0;
+  const buckets={'Sin bono':0,'Bajo esperado':0,'Esperado':0,'Sobresaliente':0};const bySec={};const base=(+crit.base||0)/100;
+  people.forEach(p=>{const c=calcRow(p.leg);tRes+=c.res;tMoney+=c.inc;
+    if(c.res===0)buckets['Sin bono']++;else if(c.res<base*0.95)buckets['Bajo esperado']++;else if(c.res<=base*1.02)buckets['Esperado']++;else buckets['Sobresaliente']++;
+    bySec[p.sec]=bySec[p.sec]||{s:0,n:0};bySec[p.sec].s+=c.res;bySec[p.sec].n++;});
+  const n=people.length;const haySueldos=people.some(p=>+p.sueldo>0);
+  document.getElementById('dash-kpis').innerHTML=`<div class="kcard count"><div class="lbl">Evaluados</div><div class="val">${n}</div></div>
+    <div class="kcard avg"><div class="lbl">Resultado prom.</div><div class="val">${n?(tRes/n*100).toFixed(1):0}%</div></div>`+
+    (haySueldos?`<div class="kcard money"><div class="lbl">Simulación · total $</div><div class="val">${fmt$(tMoney)}</div></div>
+    <div class="kcard money"><div class="lbl">Simulación · prom. $</div><div class="val">${fmt$(n?tMoney/n:0)}</div></div>`:'');
+  const c1=document.getElementById('ch-dist').getContext('2d');if(chDist)chDist.destroy();
+  chDist=new Chart(c1,{type:'doughnut',data:{labels:Object.keys(buckets),datasets:[{data:Object.values(buckets),backgroundColor:['#E53935','#F4A900','#2979FF','#1DB954'],borderColor:'#0E1824',borderWidth:2}]},options:{plugins:{legend:{labels:{color:'#657FA0',font:{size:11}}}}}});
+  const sl=Object.keys(bySec),sv=sl.map(s=>bySec[s].s/bySec[s].n*100);const c2=document.getElementById('ch-sector').getContext('2d');if(chSec)chSec.destroy();
+  chSec=new Chart(c2,{type:'bar',data:{labels:sl,datasets:[{data:sv,backgroundColor:'#2979FF',borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#657FA0',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#657FA0',callback:v=>v+'%'},grid:{color:'#1C2E44'}}}}});}
+
+/* ============ RESULTADOS ============ */
+function rRes(){const perm=ROLES[SESSION.role];document.getElementById('pill-res').textContent=mesTxt(cfg.mes);
+  document.getElementById('res-desc').textContent=perm.onlyMine?`Tus evaluados (${SESSION.evaluador})`:(perm.role==='syh'?'Todos los participantes SPM':'Consolidado del resultado (%). El $ es simulación opcional.');
+  let base=evaluables();
+  document.getElementById('rf-evaluador').style.display=perm.onlyMine?'none':'';
+  fillSelect('rf-sector',uniq(base,'sec'),'Sector (todos)');
+  if(!perm.onlyMine)fillSelect('rf-evaluador',uniq(base,'evaluador'),'Evaluador (todos)');
+  const q=document.getElementById('rf-search').value,fs=document.getElementById('rf-sector').value,fe=perm.onlyMine?'':document.getElementById('rf-evaluador').value;
+  const people=base.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)).sort(ordNom);
+  const sinJust=people.filter(p=>faltaJustificar(p.leg,'pred')||faltaJustificar(p.leg,'sh')).length;
+  document.getElementById('res-count').innerHTML=`<b>${people.length}</b> personas`+(sinJust?` · <span style="color:var(--amb)">${sinJust} sin justificar ⚠</span>`:'');
+  const emptyR=document.getElementById('res-empty');emptyR.style.display=people.length?'none':'block';
+  if(!people.length&&perm.onlyMine&&base.length===0)emptyR.innerHTML=`No tenés personal con Evaluador = "${esc(SESSION.evaluador)}". Pedile al Administrador que te lo asigne en Personal.`;
+  const carga=perm.carga,esAdmin=(carga==='todo');
+  const simMoney=perm.money&&people.some(p=>+p.sueldo>0);
+  let th='<tr><th class="l">Legajo</th><th class="l">Nombre</th><th class="l col-sec">Sector</th>';
+  if(esAdmin)th+='<th>F.Hs</th><th>F.Pred</th><th>F.S&H</th><th>Resultado</th>';
+  else th+=`<th>${carga==='pred'?'F.Pred':carga==='sh'?'F.S&H':'F.Hs'}</th><th>Resultado</th>`;
+  if(simMoney)th+='<th>Sueldo (sim.)</th><th>Incentivo $ (sim.)</th>';th+='</tr>';document.getElementById('th-res').innerHTML=th;
+  const tb=document.getElementById('tb-res');tb.innerHTML='';
+  people.forEach(p=>{const c=calcRow(p.leg);
+    let row=`<td class="l mono">${p.leg}</td><td class="l">${esc(p.nom)}</td><td class="l col-sec">${esc(p.sec)}</td>`;
+    if(esAdmin)row+=`<td class="calc f">${c.fHs.toFixed(3)}</td><td class="calc f">${c.fPr.toFixed(3)}</td><td class="calc f">${c.fSh.toFixed(3)}</td><td>${badge(c.res,c.real)}</td>`;
+    else{const f=resPropio(c,carga);row+=`<td class="calc f">${f.toFixed(3)}</td><td>${factorBadge(f)}</td>`;}
+    if(simMoney)row+=`<td class="calc">${fmt$(p.sueldo)}</td><td class="calc" style="color:var(--grn);font-weight:600">${fmt$(c.inc)}</td>`;
+    const tr=document.createElement('tr');tr.innerHTML=row;tb.appendChild(tr);});}
+
+/* ============ HISTORIAL ============ */
+function rHist(){const perm=ROLES[SESSION.role],hist=DB.load(K.hist,[]);
+  document.getElementById('th-hist-money').style.display=perm.money?'':'none';
+  document.getElementById('hist-actions').innerHTML=(perm.role==='admin')?`<button class="btn-ok" onclick="cerrarPeriodo()">Cerrar período ${mesTxt(cfg.mes)}</button>`:'';
+  const tb=document.getElementById('tb-hist');tb.innerHTML='';document.getElementById('hist-empty').style.display=hist.length?'none':'block';
+  hist.slice().reverse().forEach((h,idx)=>{const real=hist.length-1-idx;const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="l mono">${mesTxt(h.mes)}</td><td>${h.n}</td><td class="calc">${(h.avg*100).toFixed(1)}%</td>
+      <td class="calc" style="${perm.money?'':'display:none'}">${fmt$(h.money)}</td>
+      <td class="mono" style="font-size:11px;color:var(--t2)">${h.closed}</td>
+      <td>${perm.role==='admin'?`<button class="del" onclick="delHist(${real})">✕</button>`:''}</td>`;tb.appendChild(tr);});}
+function cerrarPeriodo(){if(!confirm(`¿Cerrar y archivar ${mesTxt(cfg.mes)}?`))return;
+  const parts=personal.filter(p=>p.spm&&p.estado==='Activo');
+  const snap=parts.map(p=>{const c=calcRow(p.leg);return {leg:p.leg,nom:p.nom,sec:p.sec,res:c.res,inc:c.inc};});
+  const ev=snap.filter(x=>x.res>0);const money=ev.reduce((a,b)=>a+b.inc,0),avg=ev.length?ev.reduce((a,b)=>a+b.res,0)/ev.length:0;
+  const hist=DB.load(K.hist,[]);hist.push({mes:cfg.mes,n:ev.length,avg,money,closed:new Date().toLocaleString('es-AR'),snapshot:snap});
+  DB.save(K.hist,hist);rHist();toast('Período archivado');}
+function delHist(i){if(!confirm('¿Eliminar del historial?'))return;const h=DB.load(K.hist,[]);h.splice(i,1);DB.save(K.hist,h);rHist();toast('Eliminado','warn');}
+
+/* ============ CALENDARIO ============ */
+function rCal(){document.getElementById('cal-mes').value=cfg.mes;
+  const R=cal.reglas;document.getElementById('r-lunjue').value=R.lunJue;document.getElementById('r-vie').value=R.vie;
+  document.getElementById('r-sab').value=R.sab;document.getElementById('r-dom').value=R.dom;document.getElementById('r-desc').value=R.descanso;
+  const t=calTotals(cfg.mes);
+  document.getElementById('cal-kpis').innerHTML=`
+    <div class="kcard count"><div class="lbl">Días trabajados</div><div class="val">${t.dias}</div></div>
+    <div class="kcard"><div class="lbl">Hs brutas</div><div class="val">${t.brutas}</div></div>
+    <div class="kcard"><div class="lbl">Descansos</div><div class="val">${t.desc}</div></div>
+    <div class="kcard avg"><div class="lbl">Hs esperadas base</div><div class="val">${t.netas}</div></div>`;
+  renderFeriados();renderCalTable();}
+function setRegla(k,v){cal.reglas[k]=(v===''?0:+v);DB.save(K.cal,cal);_hsCache={};rCal();}
+function renderFeriados(){const box=document.getElementById('feriados-list');box.innerHTML='';
+  const items=Object.entries(cal.feriados).sort((a,b)=>a[0]<b[0]?-1:1);
+  if(!items.length){box.innerHTML='<div style="color:var(--t3);font-size:11px">Sin feriados cargados.</div>';return;}
+  items.forEach(([iso,nom])=>{const r=document.createElement('div');r.className='crit-row';
+    r.innerHTML=`<input type="date" value="${iso}" onchange="moveFeriado('${iso}',this.value)" style="width:150px">
+      <input class="txt name" value="${esc(nom)}" oninput="cal.feriados['${iso}']=this.value;DB.save(K.cal,cal)">
+      <button class="del" onclick="delFeriado('${iso}')">✕</button>`;box.appendChild(r);});}
+function addFeriado(){const iso=cfg.mes+'-15';if(cal.feriados[iso]){toast('Ya hay un feriado ese día','err');return;}
+  cal.feriados[iso]='Nuevo feriado';DB.save(K.cal,cal);_hsCache={};rCal();}
+function delFeriado(iso){delete cal.feriados[iso];DB.save(K.cal,cal);_hsCache={};rCal();}
+function moveFeriado(oldIso,newIso){if(!newIso||newIso===oldIso)return;const nom=cal.feriados[oldIso];delete cal.feriados[oldIso];cal.feriados[newIso]=nom;DB.save(K.cal,cal);_hsCache={};rCal();}
+function renderCalTable(){const tb=document.getElementById('tb-cal');tb.innerHTML='';
+  daysOfMonth(cfg.mes).forEach(({d,iso,dow})=>{const i=dayInfo(iso,dow);const wknd=(dow===0||dow===6);
+    const tipoBadge=i.tipo==='Feriado'?`<span class="badge b-baja">Feriado</span> <span style="font-size:10px;color:var(--t2)">${esc(i.nombre)}</span>`
+      :i.tipo==='Especial'?'<span class="badge b-low">Especial</span>'
+      :wknd?'<span class="badge b-no">Fin de semana</span>':'<span class="badge b-act">Hábil</span>';
+    const tr=document.createElement('tr');if(wknd)tr.style.opacity='.6';
+    tr.innerHTML=`<td class="l mono">${String(d).padStart(2,'0')}/${cfg.mes.split('-')[1]}</td>
+      <td class="l">${DOW_ES[dow]}</td>
+      <td><input class="num" type="number" step="0.5" value="${i.brutas}" onchange="setDia('${iso}',${dow},'brutas',this.value)"></td>
+      <td><input class="num" type="number" step="0.5" value="${i.desc}" onchange="setDia('${iso}',${dow},'desc',this.value)"></td>
+      <td class="calc f">${i.netas}</td><td class="l">${tipoBadge}</td>
+      <td>${i.tipo==='Feriado'?`<button class="mini" onclick="delFeriado('${iso}')">Quitar feriado</button>`:`<button class="mini" onclick="markFeriado('${iso}')">Marcar feriado</button>`}
+        ${i.tipo==='Especial'?`<button class="del" onclick="clearDia('${iso}')" title="Volver a la regla">↺</button>`:''}</td>`;
+    tb.appendChild(tr);});}
+function setDia(iso,dow,campo,v){const cur=dayInfo(iso,dow);const o=cal.dias[iso]||{brutas:cur.brutas,desc:cur.desc};
+  o[campo]=(v===''?0:+v);cal.dias[iso]=o;DB.save(K.cal,cal);_hsCache={};rCal();}
+function clearDia(iso){delete cal.dias[iso];DB.save(K.cal,cal);_hsCache={};rCal();}
+function markFeriado(iso){const nom=prompt('Nombre del feriado / día no laborable:','Feriado');if(nom===null)return;
+  cal.feriados[iso]=nom||'Feriado';delete cal.dias[iso];DB.save(K.cal,cal);_hsCache={};rCal();}
+
+/* ============ CONFIG ============ */
+function rCfg(){document.getElementById('c-mes').value=cfg.mes;const t=calTotals(cfg.mes);
+  document.getElementById('c-hn').value=t.brutas;document.getElementById('c-desc').value=t.desc;
+  document.getElementById('c-hsbase').value=hsBase();document.getElementById('c-base').value=crit.base;
+  renderFactores();renderCrit('pred');renderCrit('sh');renderNiveles();checkPesos();}
+function onCfg(){cfg.mes=document.getElementById('c-mes').value;DB.save(K.cfg,cfg);syncMesInputs();rCfg();}
+function renderFactores(){const F=crit.factores,box=document.getElementById('factores-list');box.innerHTML='';
+  ['hs','pred','sh'].forEach(k=>{const f=F[k];const r=document.createElement('div');r.className='factor-row';
+    r.innerHTML=`<div class="fx-ico">${f.ico}</div><input class="txt fx-name" value="${esc(f.label)}" oninput="setFactor('${k}','label',this.value)">
+      <input class="num fx-peso" type="number" value="${f.peso}" oninput="setFactor('${k}','peso',this.value)">`;box.appendChild(r);});}
+function setFactor(k,f,v){crit.factores[k][f]=(f==='peso')?(v===''?0:+v):v;DB.save(K.crit,crit);checkPesos();}
+function onWeights(){crit.base=+document.getElementById('c-base').value;DB.save(K.crit,crit);}
+function checkPesos(){const F=crit.factores;const s=(+F.hs.peso||0)+(+F.pred.peso||0)+(+F.sh.peso||0);const e=document.getElementById('c-check');
+  if(Math.abs(s-100)<.01){e.textContent='Σ pesos = 100% ✓';e.className='peso-ok';}else{e.textContent=`Σ pesos = ${s}% ⚠ (deben sumar 100)`;e.className='peso-warn';}}
+function renderCrit(grp){const box=document.getElementById('crit-'+grp);box.innerHTML='';
+  crit[grp].forEach((c,i)=>{const card=document.createElement('div');card.className='crit-card';
+    const niveles=crit.niveles.map(l=>`<div class="crit-lvl"><label>${l.n} · ${esc(l.label)} (${l.pct}%)</label>
+      <input class="txt" value="${esc((c.rub&&c.rub[l.n])||'')}" oninput="setCritRub('${grp}',${i},${l.n},this.value)" placeholder="Qué significa el nivel ${l.n}"></div>`).join('');
+    card.innerHTML=`<div class="crit-head"><span class="idx">${i+1}</span>
+      <input class="txt name" value="${esc(c.label)}" oninput="setCrit('${grp}',${i},this.value)" placeholder="Nombre del criterio">
+      <button class="del" onclick="delCrit('${grp}',${i})">✕</button></div>
+      <input class="txt" style="width:100%;margin:8px 0 2px" value="${esc(c.desc||'')}" oninput="setCritDesc('${grp}',${i},this.value)" placeholder="Descripción corta (qué evalúa este criterio)">
+      <div class="crit-levels">${niveles}</div>`;box.appendChild(card);});}
+function setCrit(grp,i,v){crit[grp][i].label=v;DB.save(K.crit,crit);}
+function setCritDesc(grp,i,v){crit[grp][i].desc=v;DB.save(K.crit,crit);}
+function setCritRub(grp,i,n,v){crit[grp][i].rub=crit[grp][i].rub||{};crit[grp][i].rub[n]=v;DB.save(K.crit,crit);}
+function addCrit(grp){crit[grp].push({id:uid(),label:'Nuevo criterio',desc:'',rub:{}});DB.save(K.crit,crit);renderCrit(grp);toast('Criterio agregado');}
+function delCrit(grp,i){if(crit[grp].length<=1){toast('Debe quedar al menos un criterio','err');return;}
+  if(!confirm('¿Quitar este criterio? Cambia cuánto pesa cada uno de los restantes.'))return;crit[grp].splice(i,1);DB.save(K.crit,crit);renderCrit(grp);toast('Criterio eliminado','warn');}
+function renderNiveles(){const box=document.getElementById('niveles-list');box.innerHTML='';
+  crit.niveles.forEach((l,i)=>{const r=document.createElement('div');r.className='crit-row';
+    r.innerHTML=`<div class="idx">${l.n}</div><input class="txt name" value="${esc(l.label)}" oninput="setNivel(${i},'label',this.value)">
+      <input class="pct" type="number" value="${l.pct}" oninput="setNivel(${i},'pct',this.value)"><span style="color:var(--t3);font-size:11px">%</span>
+      <button class="del" onclick="delNivel(${i})">✕</button>`;box.appendChild(r);});}
+function setNivel(i,f,v){crit.niveles[i][f]=(f==='pct')?(v===''?0:+v):v;DB.save(K.crit,crit);}
+function addNivel(){const n=(crit.niveles.at(-1)?.n||0)+1;crit.niveles.push({n,pct:0,label:'Nivel '+n});DB.save(K.crit,crit);renderNiveles();}
+function delNivel(i){if(crit.niveles.length<=2){toast('Deben quedar al menos 2 niveles','err');return;}crit.niveles.splice(i,1);crit.niveles.forEach((l,k)=>l.n=k+1);DB.save(K.crit,crit);renderNiveles();toast('Nivel eliminado','warn');}
+function resetNiveles(){if(!confirm('¿Restaurar la escala 0/50/100/125?'))return;crit.niveles=defCriteria().niveles;DB.save(K.crit,crit);renderNiveles();toast('Escala restaurada');}
+
+/* ============ USUARIOS ============ */
+/* cuántos participantes SPM activos tiene asignado un nombre de evaluador */
+function countAsignados(evName){return personal.filter(p=>p.spm&&p.estado==='Activo'&&sameEv(p.evaluador,evName)).length;}
+/* evaluadores de la nómina que tienen gente participante del bono */
+function evaluadoresConSPM(){const m={};personal.filter(p=>p.spm&&p.estado==='Activo'&&p.evaluador&&p.evaluador!=='—').forEach(p=>{m[p.evaluador]=(m[p.evaluador]||0)+1;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);}
+function rUsers(){const tb=document.getElementById('tb-users');tb.innerHTML='';
+  users.forEach((u,i)=>{const tr=document.createElement('tr');
+    let cargo='—';
+    if(u.role==='supervisor'){const n=countAsignados(u.evaluador);
+      cargo=n>0?`<span class="badge b-ok">${n}</span>`:`<span class="badge b-0" title="Ninguna persona de la nómina tiene este nombre en la columna Evaluador">0 ⚠</span>`;}
+    else if(u.role==='syh'||u.role==='produccion'||u.role==='admin'){const n=personal.filter(p=>p.spm&&p.estado==='Activo').length;cargo=`<span class="badge b-no">${n} (todos)</span>`;}
+    tr.innerHTML=`<td class="l mono">${u.user}</td><td class="l">${esc(u.name)}</td>
+      <td><span class="badge b-role">${ROLES[u.role]?.label||u.role}</span></td><td class="l">${esc(u.evaluador||'—')}</td>
+      <td>${cargo}</td>
+      <td><button class="mini" onclick="userModal(${i})">Editar</button>
+        <button class="del" onclick="delUser(${i})" ${u.user==='admin'?'disabled title="No se puede eliminar"':''}>✕</button></td>`;tb.appendChild(tr);});}
+
+/* ---- Generación rápida de supervisores ---- */
+function slugUser(nombreEval){ // "FOOS, JOSE CARLOS" -> "foos"
+  let base=nombreEval.split(',')[0].trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  return base||'sup';}
+function genSupervisoresModal(){
+  const evs=evaluadoresConSPM();
+  if(!evs.length){toast('No hay evaluadores con personal SPM en la nómina. Cargá la columna Evaluador primero.','err');return;}
+  const rows=evs.map(([ev,n],idx)=>{
+    const yaExiste=users.some(u=>u.role==='supervisor'&&sameEv(u.evaluador,ev));
+    let user=slugUser(ev),k=2;while(users.some(x=>x.user===user)||[...document.querySelectorAll('.gs-user')].some(el=>el.value===user)){user=slugUser(ev)+k;k++;}
+    return `<tr style="${yaExiste?'opacity:.45':''}">
+      <td style="text-align:center"><input type="checkbox" class="gs-chk" data-i="${idx}" ${yaExiste?'':'checked'} ${yaExiste?'disabled':''}></td>
+      <td class="l" style="font-size:11px">${esc(ev)}</td>
+      <td style="text-align:center"><span class="badge b-ok">${n}</span></td>
+      <td><input class="gs-user" data-i="${idx}" value="${yaExiste?'—':user}" style="width:100px" ${yaExiste?'disabled':''}></td>
+      <td style="font-size:10px;color:${yaExiste?'var(--grn)':'var(--t2)'}">${yaExiste?'ya existe':'nuevo'}</td>
+      <td style="display:none" class="gs-ev">${esc(ev)}</td></tr>`;
+  }).join('');
+  document.getElementById('modal-body').innerHTML=`<h3>Generar supervisores desde la nómina</h3>
+    <div class="info-note" style="margin-bottom:12px">Detecté <b>${evs.length}</b> evaluadores con personal que participa del bono. Se crea un usuario por cada uno, ya vinculado a su nombre exacto de la nómina. Podés editar el login antes de crear.</div>
+    <div class="field" style="margin-bottom:12px"><label>Contraseña temporal para todos (la cambian al ingresar)</label><input class="txt" id="gs-pass" value="sica2026"></div>
+    <div class="tscroll" style="max-height:44vh"><table><thead><tr><th style="width:30px"></th><th class="l">Evaluador (nómina)</th><th>SPM</th><th class="l">Usuario</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="m-actions" style="margin-top:14px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-ok" onclick="genSupervisores()">Crear seleccionados</button></div>`;
+  document.getElementById('modal').style.display='flex';
+}
+function genSupervisores(){
+  const pass=document.getElementById('gs-pass').value||'sica2026';
+  const evs=evaluadoresConSPM();let creados=0;
+  document.querySelectorAll('.gs-chk').forEach(chk=>{
+    if(chk.disabled||!chk.checked)return;
+    const i=+chk.dataset.i;const ev=evs[i][0];
+    const userInput=document.querySelector(`.gs-user[data-i="${i}"]`);const user=userInput.value.trim();
+    if(!user){return;}
+    if(users.some(x=>x.user===user)){toast(`El usuario "${user}" ya existe, saltado`,'err');return;}
+    const nombre=ev.split(',')[0].trim().split(' ').map(w=>w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+    users.push({user,pass:hash(pass),name:nombre,role:'supervisor',evaluador:ev});creados++;
+  });
+  if(creados){DB.save(K.users,users);closeModal();rUsers();toast(`${creados} supervisor(es) creado(s) · contraseña temporal`);}
+  else{toast('No se creó ninguno (ya existían o sin selección)','warn');}
+}
+
+function userModal(i){const edit=(typeof i==='number'),u=edit?users[i]:{user:'',name:'',role:'supervisor',evaluador:''};
+  const opts=Object.keys(ROLES).map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLES[r].label}</option>`).join('');
+  document.getElementById('modal-body').innerHTML=`<h3>${edit?'Editar usuario':'Nuevo usuario'}</h3>
+    <div class="field"><label>Usuario (login)</label><input id="m-user" class="txt" value="${esc(u.user)}" ${edit?'disabled':''}></div>
+    <div class="field"><label>Nombre</label><input id="m-name" class="txt" value="${esc(u.name)}"></div>
+    <div class="field"><label>Contraseña ${edit?'(vacío = sin cambio)':''}</label><input id="m-pass" type="text" placeholder="${edit?'••••••':''}"></div>
+    <div class="field"><label>Rol</label><select id="m-role">${opts}</select></div>
+    <div class="field"><label>Evaluador asignado (solo Supervisor) — debe coincidir con la columna Evaluador de la nómina</label><input id="m-eval" class="txt" list="dl-ueval" value="${esc(u.evaluador)}" placeholder="Ej: Foos"><datalist id="dl-ueval">${uniq(personal,'evaluador').filter(e=>e&&e!=='—').map(e=>`<option>${esc(e)}</option>`).join('')}</datalist></div>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="saveUser(${edit?i:-1})">Guardar</button></div>`;
+  document.getElementById('modal').style.display='flex';}
+function saveUser(i){const edit=i>=0;const u=document.getElementById('m-user').value.trim(),n=document.getElementById('m-name').value.trim(),
+    p=document.getElementById('m-pass').value,r=document.getElementById('m-role').value,ev=document.getElementById('m-eval').value.trim();
+  if(edit){users[i].name=n||users[i].name;users[i].role=r;users[i].evaluador=(r==='supervisor')?ev:'';if(p)users[i].pass=hash(p);}
+  else{if(!u||!p){toast('Usuario y contraseña obligatorios','err');return;}if(users.find(x=>x.user===u)){toast('Ese usuario ya existe','err');return;}
+    users.push({user:u,pass:hash(p),name:n||u,role:r,evaluador:(r==='supervisor')?ev:''});}
+  DB.save(K.users,users);closeModal();rUsers();toast(edit?'Usuario actualizado':'Usuario creado');}
+function delUser(i){if(users[i].user==='admin')return;if(!confirm('¿Eliminar usuario?'))return;users.splice(i,1);DB.save(K.users,users);rUsers();toast('Usuario eliminado','warn');}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+/* ============ EXPORT ============ */
+function exportXLSX(){const perm=ROLES[SESSION.role],carga=perm.carga;let base=evaluables();
+  const q=document.getElementById('rf-search').value,fs=document.getElementById('rf-sector').value,fe=perm.onlyMine?'':document.getElementById('rf-evaluador').value;
+  const people=base.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)).sort(ordNom);
+  const data=people.map(p=>{const c=calcRow(p.leg);
+    const resVal=(carga==='todo'?c.res:resPropio(c,carga))*100; /* valor plano con 2 decimales (no %) */
+    return {'Legajo':p.leg,'Apellido y Nombre':p.nom,'Resultado':resVal.toFixed(2).replace('.',',')};});
+  const ws=XLSX.utils.json_to_sheet(data);ws['!cols']=[{wch:10},{wch:32},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Resultados '+cfg.mes);
+  XLSX.writeFile(wb,`Resultados_Bono_${cfg.mes}.xlsx`);toast('Resultados exportados');}
+
+/* ============ MAESTRO DE HORAS (gerente) ============ */
+function exportHoras(){
+  const people=evaluables().slice().sort(ordNom);
+  const rows=people.map(p=>{const e=evalData[cfg.mes]?.[p.leg]||{};
+    return {'Legajo':p.leg,'Apellido y Nombre':p.nom,'Vac':+e.vac||0,'Hs reales':+e.real||0};});
+  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:8},{wch:30},{wch:8},{wch:10}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Horas');
+  const help=[{Campo:'Legajo',Nota:'No lo cambies: identifica a la persona.'},
+    {Campo:'Apellido y Nombre',Nota:'Referencia, no se reimporta.'},
+    {Campo:'Vac',Nota:'Horas de vacaciones/licencia del mes (se restan a las esperadas).'},
+    {Campo:'Hs reales',Nota:'Horas realmente trabajadas en el mes.'}];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(help),'Instructivo');
+  XLSX.writeFile(wb,`Horas_${cfg.mes}.xlsx`);toast('Maestro de horas exportado');
+}
+const HORAS_ALIAS={leg:['legajo','leg','nro','n°','numero','id','ficha'],vac:['vac','vacaciones','licencia','ausencias','vacac'],real:['hs reales','horas reales','reales','hs trabajadas','hs','horas']};
+let _hrRows=null,_hrCols=null;
+function importHorasModal(){_hrRows=null;_hrCols=null;
+  document.getElementById('modal-body').innerHTML=`<h3>Importar horas desde Excel / CSV</h3>
+    <div class="info-note" style="margin-bottom:14px">Cargá el maestro de horas que exportaste, con las columnas <b>Vac</b> y <b>Hs reales</b> completas. Se actualizan por legajo; el resto de la evaluación no se toca.</div>
+    <div class="field"><label>Archivo</label><input type="file" id="hr-file" accept=".xlsx,.xls,.csv" onchange="onImportHoras(this)"></div>
+    <div id="hr-body"></div>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cerrar</button></div>`;
+  document.getElementById('modal').style.display='flex';}
+function onImportHoras(input){const f=input.files[0];if(!f)return;const reader=new FileReader();
+  reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    if(!rows.length){toast('El archivo no tiene filas','err');return;}
+    _hrRows=rows;_hrCols=Object.keys(rows[0]);showHorasMapping();
+  }catch(err){toast('No pude leer el archivo: '+err.message,'err');}};
+  reader.readAsArrayBuffer(f);}
+function autoMapHoras(){const m={};const low=_hrCols.map(c=>c.toLowerCase().trim());
+  for(const[f,al]of Object.entries(HORAS_ALIAS)){let i=low.findIndex(c=>al.includes(c));if(i<0)i=low.findIndex(c=>al.some(a=>c.includes(a)));m[f]=i>=0?_hrCols[i]:'';}return m;}
+function showHorasMapping(){const m=autoMapHoras();
+  const opt=cur=>`<option value="">(ninguna)</option>`+_hrCols.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  const L={leg:'Legajo *',vac:'Vac',real:'Hs reales'};
+  const rows=Object.keys(L).map(f=>`<div class="crit-row"><div style="width:90px;font-size:11px;color:var(--t2)">${L[f]}</div><select id="hrmap-${f}" style="flex:1">${opt(m[f])}</select></div>`).join('');
+  document.getElementById('hr-body').innerHTML=`<div style="margin:14px 0 6px;font-size:11px;color:var(--t2)"><b>${_hrRows.length}</b> filas leídas. Mapeo:</div>${rows}
+    <div class="m-actions" style="margin-top:12px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="applyHoras()">Aplicar horas</button></div>`;}
+function applyHoras(){const g=f=>document.getElementById('hrmap-'+f).value;const map={leg:g('leg'),vac:g('vac'),real:g('real')};
+  if(!map.leg){toast('Falta mapear el Legajo','err');return;}
+  if(!map.vac&&!map.real){toast('Mapeá al menos Vac o Hs reales','err');return;}
+  let n=0,noEnc=0;
+  _hrRows.forEach(r=>{const leg=String(r[map.leg]).trim();if(!leg)return;
+    if(!personal.find(p=>p.leg===leg)){noEnc++;return;}
+    if(map.vac!=='')setE(leg,'vac',parseMonto(r[map.vac]));
+    if(map.real!=='')setE(leg,'real',parseMonto(r[map.real]));n++;});
+  closeModal();rEval();toast(`Horas actualizadas: ${n} persona(s)`+(noEnc?` · ${noEnc} legajo(s) no encontrados`:''));}
+
+/* ============ MAESTRO S&H (Seg. e Higiene) ============ */
+function exportSH(){
+  const people=evaluables().slice().sort(ordNom);
+  const rows=people.map(p=>{const e=evalData[cfg.mes]?.[p.leg]||{};const sh=e.sh||{};
+    const o={'Legajo':p.leg,'Apellido y Nombre':p.nom,'Sector':p.sec};
+    crit.sh.forEach(c=>o[c.label]=(sh[c.id]===undefined||sh[c.id]==='')?'':sh[c.id]);
+    o['Observaciones']=(e.com&&e.com.sh)||'';return o;});
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:30},{wch:20},...crit.sh.map(()=>({wch:14})),{wch:40}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'S&H');
+  const help=[{Campo:'Legajo',Nota:'No lo cambies: identifica a la persona.'},
+    {Campo:'Apellido y Nombre / Sector',Nota:'Referencia, no se reimportan.'},
+    ...crit.sh.map(c=>({Campo:c.label,Nota:'Puntuación 1 a 4 (1=0% · 2=50% · 3=100% · 4=125%). Vacío = sin evaluar.'})),
+    {Campo:'Observaciones',Nota:'Obligatorio si alguna nota es distinta de 3 (Esperado).'}];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(help),'Instructivo');
+  XLSX.writeFile(wb,`SH_${cfg.mes}.xlsx`);toast('Maestro de S&H exportado');
+}
+let _shRows=null,_shCols=null;
+function importSHModal(){_shRows=null;_shCols=null;
+  document.getElementById('modal-body').innerHTML=`<h3>Importar S&H desde Excel / CSV</h3>
+    <div class="info-note" style="margin-bottom:14px">Cargá el maestro de S&H con las columnas de criterios (1 a 4, o vacío) y las observaciones. Se actualiza por legajo; el resto de la evaluación no se toca.</div>
+    <div class="field"><label>Archivo</label><input type="file" id="sh-file" accept=".xlsx,.xls,.csv" onchange="onImportSH(this)"></div>
+    <div id="sh-body"></div>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cerrar</button></div>`;
+  document.getElementById('modal').style.display='flex';}
+function onImportSH(input){const f=input.files[0];if(!f)return;const reader=new FileReader();
+  reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    if(!rows.length){toast('El archivo no tiene filas','err');return;}
+    _shRows=rows;_shCols=Object.keys(rows[0]);showSHMapping();
+  }catch(err){toast('No pude leer el archivo: '+err.message,'err');}};
+  reader.readAsArrayBuffer(f);}
+function findColSH(target){const t=target.toLowerCase().trim();return _shCols.find(c=>c.toLowerCase().trim()===t)||_shCols.find(c=>c.toLowerCase().includes(t))||'';}
+function showSHMapping(){
+  const legCol=_shCols.find(c=>c.toLowerCase().trim()==='legajo')||_shCols.find(c=>/leg|nro|id/.test(c.toLowerCase()))||'';
+  const opt=(cur)=>`<option value="">(ninguna)</option>`+_shCols.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  let rows=`<div class="crit-row"><div style="width:130px;font-size:11px;color:var(--t2)">Legajo *</div><select id="shmap-leg" style="flex:1">${opt(legCol)}</select></div>`;
+  crit.sh.forEach((c,i)=>{rows+=`<div class="crit-row"><div style="width:130px;font-size:11px;color:var(--t2)">${esc(c.label)}</div><select id="shmap-c${i}" style="flex:1">${opt(findColSH(c.label))}</select></div>`;});
+  rows+=`<div class="crit-row"><div style="width:130px;font-size:11px;color:var(--t2)">Observaciones</div><select id="shmap-obs" style="flex:1">${opt(findColSH('Observaciones'))}</select></div>`;
+  document.getElementById('sh-body').innerHTML=`<div style="margin:14px 0 6px;font-size:11px;color:var(--t2)"><b>${_shRows.length}</b> filas leídas. Mapeo:</div>${rows}
+    <div class="m-actions" style="margin-top:12px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="applySH()">Aplicar S&H</button></div>`;}
+function normNiv(v){if(v===''||v==null)return '';const n=parseInt(String(v).trim(),10);return (n>=1&&n<=crit.niveles.length)?n:'';}
+function applySH(){const legCol=document.getElementById('shmap-leg').value;
+  if(!legCol){toast('Falta mapear el Legajo','err');return;}
+  const cMap=crit.sh.map((c,i)=>document.getElementById('shmap-c'+i).value);
+  const obsCol=document.getElementById('shmap-obs').value;
+  let n=0,noEnc=0;
+  _shRows.forEach(r=>{const leg=String(r[legCol]).trim();if(!leg)return;
+    if(!personal.find(p=>p.leg===leg)){noEnc++;return;}
+    const e=getE(leg);
+    crit.sh.forEach((c,i)=>{if(cMap[i]!==''){e.sh[c.id]=normNiv(r[cMap[i]]);}});
+    if(obsCol!==''){e.com=e.com||{};e.com.sh=String(r[obsCol]||'');}
+    n++;});
+  DB.save(K.eval,evalData);closeModal();rEval();toast(`S&H actualizado: ${n} persona(s)`+(noEnc?` · ${noEnc} legajo(s) no encontrados`:''));}
+
+/* ============ EXPORTAR MAESTRO DE NÓMINA ============ */
+function exportMaestro(){
+  const rows=personal.length?personal.map(p=>({
+    'Legajo':p.leg,'Apellido y Nombre':p.nom,'Sector':p.sec,'Puesto':p.pue,'Evaluador':p.evaluador,
+    'Tipo':p.tipo,'Participa SPM':p.spm,'Estado':p.estado,'Sueldo base':p.sueldo||0
+  })):[{'Legajo':'','Apellido y Nombre':'','Sector':'','Puesto':'','Evaluador':'','Tipo':'Jornalizado','Participa SPM':1,'Estado':'Activo','Sueldo base':0}];
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:28},{wch:20},{wch:20},{wch:14},{wch:12},{wch:13},{wch:8},{wch:13}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Nómina');
+  const help=[
+    {Campo:'Legajo',Obligatorio:'Sí',Valores:'Número único de legajo. No lo repitas.'},
+    {Campo:'Apellido y Nombre',Obligatorio:'Sí',Valores:'Texto libre.'},
+    {Campo:'Sector',Obligatorio:'No',Valores:'Texto. Escribilo IGUAL en todos los del mismo sector.'},
+    {Campo:'Puesto',Obligatorio:'No',Valores:'Texto libre.'},
+    {Campo:'Evaluador',Obligatorio:'No',Valores:'Nombre del supervisor que lo evalúa. Debe coincidir con el "Evaluador asignado" del usuario supervisor. Usá "—" si no aplica.'},
+    {Campo:'Tipo',Obligatorio:'No',Valores:'Jornalizado  /  Mensual'},
+    {Campo:'Participa SPM',Obligatorio:'No',Valores:'1 = participa del bono · 0 = no participa. Si lo dejás vacío, se deriva del Tipo (Jornalizado = 1).'},
+    {Campo:'Estado',Obligatorio:'No',Valores:'Activo  /  Baja'},
+    {Campo:'Sueldo base',Obligatorio:'No',Valores:'Número, sin símbolos ($, puntos de miles opcionales). Solo lo usa/ve el Administrador.'}
+  ];
+  const wsh=XLSX.utils.json_to_sheet(help);wsh['!cols']=[{wch:20},{wch:12},{wch:70}];
+  XLSX.utils.book_append_sheet(wb,wsh,'Instructivo');
+  XLSX.writeFile(wb,'Maestro_Nomina_SICA.xlsx');
+  toast('Maestro exportado');
+}
+
+/* ============ IMPORTAR NÓMINA (Excel/CSV) ============ */
+const IMP_ALIAS={
+  nom:['apellido y nombre','nombre y apellido','apellido, nombre','nombre','apellido','empleado','agente'],
+  sec:['sector','area','área','sección','seccion','centro'],
+  pue:['puesto','cargo','funcion','función','tarea'],
+  evaluador:['evaluador','supervisor','responsable','jefe','encargado'],
+  tipo:['tipo','categoria','categoría','liquidacion','liquidación','modalidad','condicion','condición'],
+  spm:['participa spm','spm','participa','bono','incentivo','productividad'],
+  estado:['estado','situacion','situación','activo','alta/baja','condicion laboral'],
+  sueldo:['sueldo base','sueldo','basico','básico','haber','remuneracion','remuneración','neto','bruto']
+};
+let _impRows=null,_impCols=null;
+function importModal(){
+  _impRows=null;_impCols=null;
+  document.getElementById('modal-body').innerHTML=`<h3>Importar nómina desde Excel / CSV</h3>
+    <div class="info-note" style="margin-bottom:14px">Elegí un archivo <b>.xlsx</b> o <b>.csv</b> con una fila de encabezados. Detecto las columnas automáticamente y te dejo ajustar el mapeo antes de aplicar. El flag <b>Participa SPM</b> rara vez viene en la nómina general: si falta, lo derivo del Tipo (Jornalizado = participa).</div>
+    <div class="field"><label>Archivo</label><input type="file" id="imp-file" accept=".xlsx,.xls,.csv" onchange="onImportFile(this)"></div>
+    <div id="imp-body"></div>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cerrar</button></div>`;
+  document.getElementById('modal').style.display='flex';
+}
+function onImportFile(input){const f=input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{try{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    if(!rows.length){toast('El archivo no tiene filas de datos','err');return;}
+    _impRows=rows;_impCols=Object.keys(rows[0]);showMapping();
+  }catch(err){toast('No pude leer el archivo: '+err.message,'err');}};
+  reader.readAsArrayBuffer(f);
+}
+function autoMap(){const m={};const low=_impCols.map(c=>c.toLowerCase().trim());
+  for(const[field,al]of Object.entries(IMP_ALIAS)){
+    let idx=low.findIndex(c=>al.includes(c));if(idx<0)idx=low.findIndex(c=>al.some(a=>c.includes(a)));
+    m[field]=idx>=0?_impCols[idx]:'';}
+  return m;}
+const IMP_LABELS={leg:'Legajo *',nom:'Apellido y Nombre *',sec:'Sector',pue:'Puesto',evaluador:'Evaluador',tipo:'Tipo',spm:'Participa SPM',estado:'Estado',sueldo:'Sueldo base'};
+function showMapping(){const m=autoMap();
+  const opt=cur=>`<option value="">(ninguna)</option>`+_impCols.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  const rows=Object.keys(IMP_LABELS).map(f=>`<div class="crit-row"><div style="width:130px;font-size:11px;color:var(--t2)">${IMP_LABELS[f]}</div>
+    <select id="map-${f}" style="flex:1" onchange="impPreview()">${opt(m[f])}</select></div>`).join('');
+  document.getElementById('imp-body').innerHTML=`
+    <div style="margin:14px 0 6px;font-size:11px;color:var(--t2)"><b>${_impRows.length}</b> filas leídas · ${_impCols.length} columnas. Ajustá el mapeo si hace falta:</div>
+    ${rows}
+    <div class="field" style="margin-top:12px"><label>Modo</label>
+      <select id="imp-mode">
+        <option value="merge">Actualizar por legajo (conserva sueldos y evaluaciones ya cargadas)</option>
+        <option value="replace">Reemplazar toda la nómina</option>
+      </select></div>
+    <div class="info-note" id="imp-prev" style="margin-top:10px"></div>
+    <div class="m-actions" style="margin-top:12px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="applyImport()">Aplicar importación</button></div>`;
+  impPreview();
+}
+function parseSpm(v,tipo){if(v!==undefined&&v!==''){const s=String(v).toLowerCase().trim();return (['1','si','sí','x','true','verdadero','participa'].includes(s))?1:0;}
+  return /jornal/i.test(tipo||'')?1:0;}
+function parseEstado(v){if(v===undefined||v==='')return 'Activo';const s=String(v).toLowerCase();return /baja|inactiv|egres|0/.test(s)?'Baja':'Activo';}
+function parseMonto(v){if(v===''||v==null)return 0;if(typeof v==='number')return v;
+  let s=String(v).replace(/[^\d.,-]/g,'');if(!s)return 0;
+  if(s.includes(','))s=s.replace(/\./g,'').replace(',','.'); /* AR: punto=miles, coma=decimal */
+  else if((s.match(/\./g)||[]).length>1||/\.\d{3}(\D|$)/.test(s))s=s.replace(/\./g,''); /* puntos de miles */
+  return +s||0;}
+function buildImport(){const g=f=>document.getElementById('map-'+f).value;const map={};Object.keys(IMP_LABELS).forEach(f=>map[f]=g(f));
+  const out=_impRows.map(r=>{const tipo=(map.tipo?String(r[map.tipo]):'').trim()||'Jornalizado';
+    return {leg:String(map.leg?r[map.leg]:'').trim(),nom:String(map.nom?r[map.nom]:'').trim(),
+      sec:String(map.sec?r[map.sec]:'').trim(),pue:String(map.pue?r[map.pue]:'').trim(),
+      evaluador:String(map.evaluador?r[map.evaluador]:'').trim()||'—',tipo,
+      spm:parseSpm(map.spm?r[map.spm]:undefined,tipo),estado:parseEstado(map.estado?r[map.estado]:undefined),
+      acceso:'—',sueldo:map.sueldo?parseMonto(r[map.sueldo]):0};
+  }).filter(x=>x.leg&&x.nom);
+  return {out,map};}
+function impPreview(){if(!document.getElementById('map-leg'))return;const {out,map}=buildImport();
+  const spmN=out.filter(x=>x.spm).length;const bajas=out.filter(x=>x.estado==='Baja').length;
+  const warn=!map.spm?' · <b style="color:var(--amb)">no mapeaste SPM: derivado del Tipo</b>':'';
+  document.getElementById('imp-prev').innerHTML=`Se importarán <b>${out.length}</b> personas · <b>${spmN}</b> participan SPM · ${bajas} en baja${warn}`;}
+function applyImport(){const {out}=buildImport();if(!out.length){toast('No hay filas válidas (revisá Legajo y Nombre)','err');return;}
+  const mode=document.getElementById('imp-mode').value;
+  if(mode==='replace'){if(!confirm(`¿Reemplazar TODA la nómina actual (${personal.length}) por las ${out.length} importadas?`))return;personal=out;}
+  else{const byLeg={};personal.forEach(p=>byLeg[p.leg]=p);out.forEach(im=>{byLeg[im.leg]={...(byLeg[im.leg]||{}),...im};});personal=Object.values(byLeg);}
+  DB.save(K.pers,personal);closeModal();rPersonal();toast(`Nómina importada (${out.length} filas)`);}
+
+/* ============ UTILS ============ */
+function esc(s){return (s||'').toString().replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function toast(msg,tipo='ok'){const t=document.createElement('div');t.style.cssText=`padding:10px 18px;background:${tipo==='ok'?'#1DB954':tipo==='err'?'#E53935':'#F4A900'};color:#fff;border-radius:8px;font-size:12px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.4)`;t.textContent=msg;document.getElementById('toast-c').appendChild(t);setTimeout(()=>t.remove(),2600);}
+
+const renderMap={inicio:rInicio,personal:rPersonal,eval:rEval,dash:rDash,res:rRes,hist:rHist,cal:rCal,cfg:rCfg,users:rUsers};
+
+seed();reload();
+const s=DB.load(K.sess,null);if(s){SESSION=s;startApp();}
+</script>
+</body>
+</html>
