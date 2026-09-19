@@ -772,8 +772,9 @@ async function rCal(){
 }
 function renderCal(){
   document.getElementById('cal-mes').value=cfg.mes;
-  const R=cal.reglas;document.getElementById('r-lunjue').value=R.lunJue;document.getElementById('r-vie').value=R.vie;
-  document.getElementById('r-sab').value=R.sab;document.getElementById('r-dom').value=R.dom;document.getElementById('r-desc').value=R.descanso;
+  const R=cal.reglas;
+  setInputValue('r-lunjue',R.lunJue);setInputValue('r-vie',R.vie);
+  setInputValue('r-sab',R.sab);setInputValue('r-dom',R.dom);setInputValue('r-desc',R.descanso);
   const t=calTotals(cfg.mes);
   document.getElementById('cal-kpis').innerHTML=`
     <div class="kcard count"><div class="lbl">Días trabajados</div><div class="val">${t.dias}</div></div>
@@ -782,11 +783,15 @@ function renderCal(){
     <div class="kcard avg"><div class="lbl">Hs esperadas base</div><div class="val">${t.netas}</div></div>`;
   renderFeriados();renderCalTable();
 }
+function saveReglasNow(){
+  return Api.saveReglas({ lun_jue: cal.reglas.lunJue, vie: cal.reglas.vie, sab: cal.reglas.sab, dom: cal.reglas.dom, descanso: cal.reglas.descanso })
+    .catch(async err => { toast('No se pudo guardar la regla: ' + err.message, 'err'); await rCal(); });
+}
+const debouncedSaveReglas = debounce(saveReglasNow, 400);
 function setRegla(k,v){
   cal.reglas[k]=(v===''?0:+v);
   renderCal();
-  Api.saveReglas({ lun_jue: cal.reglas.lunJue, vie: cal.reglas.vie, sab: cal.reglas.sab, dom: cal.reglas.dom, descanso: cal.reglas.descanso })
-    .catch(async err => { toast('No se pudo guardar la regla: ' + err.message, 'err'); await rCal(); });
+  debouncedSaveReglas();
 }
 function renderFeriados(){const box=document.getElementById('feriados-list');box.innerHTML='';
   const items=Object.entries(cal.feriados).sort((a,b)=>a[0]<b[0]?-1:1);
@@ -877,16 +882,25 @@ function renderFactores(){const F=crit.factores,box=document.getElementById('fac
   ['hs','pred','sh'].forEach(k=>{const f=F[k];const r=document.createElement('div');r.className='factor-row';
     r.innerHTML=`<div class="fx-ico">${f.ico}</div><input class="txt fx-name" value="${esc(f.label)}" oninput="setFactor('${k}','label',this.value)">
       <input class="num fx-peso" type="number" value="${f.peso}" oninput="setFactor('${k}','peso',this.value)">`;box.appendChild(r);});}
-async function setFactor(k,f,v){
-  crit.factores[k][f]=(f==='peso')?(v===''?0:+v):v;
-  checkPesos();
+async function saveFactoresNow(){
   const payload = Object.entries(crit.factores).map(([key, val]) => ({ factor_key: key, icono: val.ico, label: val.label, peso: val.peso }));
   try { await Api.saveFactores(payload); } catch (err) { toast('No se pudo guardar el factor: ' + err.message, 'err'); }
 }
-async function onWeights(){
-  crit.base=+document.getElementById('c-base').value;
-  try { await Api.saveConfig({ ...cfg, bono_base_pct: crit.base }); }
+const debouncedSaveFactores = debounce(saveFactoresNow, 400);
+function setFactor(k,f,v){
+  crit.factores[k][f]=(f==='peso')?(v===''?0:+v):v;
+  checkPesos();
+  debouncedSaveFactores();
+}
+async function saveBonoBaseNow(){
+  try { await Api.saveConfig(cfg); }
   catch (err) { toast('No se pudo guardar el bono base: ' + err.message, 'err'); }
+}
+const debouncedSaveBonoBase = debounce(saveBonoBaseNow, 400);
+function onWeights(){
+  crit.base=+document.getElementById('c-base').value;
+  cfg.bono_base_pct=crit.base;
+  debouncedSaveBonoBase();
 }
 function checkPesos(){const F=crit.factores;const s=(+F.hs.peso||0)+(+F.pred.peso||0)+(+F.sh.peso||0);const e=document.getElementById('c-check');
   if(Math.abs(s-100)<.01){e.textContent='Σ pesos = 100% ✓';e.className='peso-ok';}else{e.textContent=`Σ pesos = ${s}% ⚠ (deben sumar 100)`;e.className='peso-warn';}}
@@ -907,9 +921,10 @@ async function saveCriteriosNow() {
   try { await Api.saveCriterios(toApiCriterios()); }
   catch (err) { toast('No se pudo guardar el criterio: ' + err.message, 'err'); }
 }
-function setCrit(grp,i,v){crit[grp][i].label=v;saveCriteriosNow();}
-function setCritDesc(grp,i,v){crit[grp][i].desc=v;saveCriteriosNow();}
-function setCritRub(grp,i,n,v){crit[grp][i].rub=crit[grp][i].rub||{};crit[grp][i].rub[n]=v;saveCriteriosNow();}
+const debouncedSaveCriterios = debounce(saveCriteriosNow, 400);
+function setCrit(grp,i,v){crit[grp][i].label=v;debouncedSaveCriterios();}
+function setCritDesc(grp,i,v){crit[grp][i].desc=v;debouncedSaveCriterios();}
+function setCritRub(grp,i,n,v){crit[grp][i].rub=crit[grp][i].rub||{};crit[grp][i].rub[n]=v;debouncedSaveCriterios();}
 function addCrit(grp){crit[grp].push({id:uid(),label:'Nuevo criterio',desc:'',rub:{}});saveCriteriosNow();renderCrit(grp);toast('Criterio agregado');}
 function delCrit(grp,i){if(crit[grp].length<=1){toast('Debe quedar al menos un criterio','err');return;}
   if(!confirm('¿Quitar este criterio? Cambia cuánto pesa cada uno de los restantes.'))return;crit[grp].splice(i,1);saveCriteriosNow();renderCrit(grp);toast('Criterio eliminado','warn');}
@@ -923,7 +938,8 @@ async function saveNivelesNow() {
   try { await Api.saveNiveles(toApiNiveles()); }
   catch (err) { toast('No se pudo guardar la escala: ' + err.message, 'err'); }
 }
-function setNivel(i,f,v){crit.niveles[i][f]=(f==='pct')?(v===''?0:+v):v;saveNivelesNow();}
+const debouncedSaveNiveles = debounce(saveNivelesNow, 400);
+function setNivel(i,f,v){crit.niveles[i][f]=(f==='pct')?(v===''?0:+v):v;debouncedSaveNiveles();}
 function addNivel(){const n=(crit.niveles.at(-1)?.n||0)+1;crit.niveles.push({n,pct:0,label:'Nivel '+n});saveNivelesNow();renderNiveles();}
 function delNivel(i){if(crit.niveles.length<=2){toast('Deben quedar al menos 2 niveles','err');return;}crit.niveles.splice(i,1);crit.niveles.forEach((l,k)=>l.n=k+1);saveNivelesNow();renderNiveles();toast('Nivel eliminado','warn');}
 function resetNiveles(){
@@ -1291,6 +1307,18 @@ async function applyImport(){
 
 /* ============ UTILS ============ */
 function esc(s){return (s||'').toString().replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+/* Colapsa ráfagas de llamadas (p.ej. un `oninput` por tecla) en una sola ejecución
+   diferida, para no disparar N PUT concurrentes que pueden llegar desordenados. */
+function debounce(fn, ms = 400) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+/* Escribe el valor en un input salvo que el usuario lo esté editando en ese momento
+   (evita pisar lo tipeado, p.ej. el punto decimal de "9."). */
+function setInputValue(id, val) {
+  const el = document.getElementById(id);
+  if (el && document.activeElement !== el) el.value = val;
+}
 function toast(msg,tipo='ok'){const t=document.createElement('div');t.style.cssText=`padding:10px 18px;background:${tipo==='ok'?'#1DB954':tipo==='err'?'#E53935':'#F4A900'};color:#fff;border-radius:8px;font-size:12px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.4)`;t.textContent=msg;document.getElementById('toast-c').appendChild(t);setTimeout(()=>t.remove(),2600);}
 
 const renderMap={inicio:rInicio,personal:rPersonal,eval:rEval,dash:rDash,res:rRes,hist:rHist,cal:rCal,cfg:rCfg,users:rUsers};
