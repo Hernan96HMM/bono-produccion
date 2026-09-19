@@ -333,9 +333,9 @@ function mesTxt(m){if(!m)return'';const[y,mm]=m.split('-');return `${MESES[+mm-1
 
 let SESSION=null,users=[],personal=[],cfg={},crit={},cal=defCalendarShape(),evalData={};
 function defCalendarShape(){return{reglas:{lunJue:0,vie:0,sab:0,dom:0,descanso:0},feriados:{},dias:{}};}
-let colView=DB.load('bp5_colview',{sector:true,evaluador:true});
+let colView; try { colView = JSON.parse(localStorage.getItem('bp5_colview')) ?? {sector:true,evaluador:true}; } catch { colView = {sector:true,evaluador:true}; }
 function applyColView(){const m=document.querySelector('main');if(!m)return;m.classList.toggle('hide-sec',!colView.sector);m.classList.toggle('hide-ev',!colView.evaluador);}
-function toggleCol(k){colView[k]=!colView[k];DB.save('bp5_colview',colView);applyColView();syncColToggles();}
+function toggleCol(k){colView[k]=!colView[k];localStorage.setItem('bp5_colview', JSON.stringify(colView));applyColView();syncColToggles();}
 function syncColToggles(){document.querySelectorAll('.col-sector').forEach(c=>c.checked=colView.sector);document.querySelectorAll('.col-evaluador').forEach(c=>c.checked=colView.evaluador);}
 function mapNiveles(rows) {
   return rows.map(r => ({ n: r.numero, pct: r.porcentaje, label: r.label }));
@@ -469,7 +469,8 @@ function rInicio(){document.getElementById('pill-inicio').textContent=mesTxt(cfg
     <button class="btn-ghost" onclick="goto('personal')">Ver Personal</button><button class="btn-ghost" onclick="goto('res')">Ver Resultados</button>`;
   renderAvance();}
 function renderAvance(){const box=document.getElementById('inicio-avance');if(!box)return;
-  const fin=DB.load(K.fin,{});const fm=fin[cfg.mes]||{};
+  let fin; try { fin = JSON.parse(localStorage.getItem('bp5_fin')) ?? {}; } catch { fin = {}; }
+  const fm=fin[cfg.mes]||{};
   const evs=users.filter(u=>['produccion','supervisor','syh'].includes(u.role));
   const finKeyOf=u=>u.role==='supervisor'?('sup:'+u.user):('rol:'+u.role);
   let done=0;const rows=evs.map(u=>{const f=fm[finKeyOf(u)];if(f)done++;
