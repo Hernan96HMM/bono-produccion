@@ -484,7 +484,7 @@ function renderAvance(){const box=document.getElementById('inicio-avance');if(!b
 function mapPersona(p) {
   return {
     leg: p.legajo, nom: p.nombre, sec: p.sector, pue: p.puesto,
-    evaluador: p.evaluador, tipo: p.tipo, spm: p.spm, estado: p.estado,
+    evaluador: p.evaluador, tipo: p.tipo, spm: p.spm ? 1 : 0, estado: p.estado,
     acceso: p.acceso, sueldo: Number(p.sueldo_base) || 0,
   };
 }
@@ -1132,6 +1132,7 @@ async function applyImport(){
   const mode=document.getElementById('imp-mode').value;
   if(mode==='replace'&&!confirm(`¿Reemplazar TODA la nómina actual (${personal.length}) por las ${out.length} importadas?`))return;
   closeModal();
+  let failed = false;
   try {
     if (mode === 'replace') {
       for (const p of personal) { await Api.deletePersonal(p.leg); }
@@ -1144,10 +1145,11 @@ async function applyImport(){
       }
     }
   } catch (err) {
+    failed = true;
     toast('Error importando: ' + err.message, 'err');
   }
   await rPersonal();
-  toast(`Nómina importada (${out.length} filas)`);
+  if (!failed) toast(`Nómina importada (${out.length} filas)`);
 }
 
 /* ============ UTILS ============ */
