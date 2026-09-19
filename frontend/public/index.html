@@ -481,9 +481,25 @@ function renderAvance(){const box=document.getElementById('inicio-avance');if(!b
     <div class="tscroll"><table><thead><tr><th class="l">Evaluador</th><th>Rol</th><th class="l">Estado</th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:20px">No hay evaluadores cargados en Usuarios.</td></tr>'}</tbody></table></div>`;}
 
 /* ============ PERSONAL ============ */
-function rPersonal(){
+function mapPersona(p) {
+  return {
+    leg: p.legajo, nom: p.nombre, sec: p.sector, pue: p.puesto,
+    evaluador: p.evaluador, tipo: p.tipo, spm: p.spm, estado: p.estado,
+    acceso: p.acceso, sueldo: Number(p.sueldo_base) || 0,
+  };
+}
+function toApiPersona(p) {
+  return {
+    legajo: p.leg, nombre: p.nom, sector: p.sec, puesto: p.pue,
+    evaluador: p.evaluador, tipo: p.tipo, spm: !!p.spm, estado: p.estado,
+    acceso: p.acceso, sueldo_base: p.sueldo,
+  };
+}
+async function rPersonal(){
+  try { personal = (await Api.getPersonal()).map(mapPersona); }
+  catch (err) { toast('No se pudo cargar la nomina: ' + err.message, 'err'); return; }
   const spmSi=personal.filter(p=>p.spm).length;
-  document.getElementById('per-note').innerHTML=`La nómina de ejemplo viene de la SPM vigente (<b>${personal.length} personas</b>, <b>${spmSi} con Participa SPM = 1</b>). Es punto de partida editable: dala de alta, modificala o date de baja según tu nómina real.`;
+  document.getElementById('per-note').innerHTML=`La nómina tiene <b>${personal.length} personas</b> cargadas, <b>${spmSi} con Participa SPM = 1</b>. Se administra desde acá: alta, edición o baja según corresponda.`;
   fillSelect('f-sector',uniq(personal,'sec'),'Sector (todos)');
   fillSelect('f-evaluador',uniq(personal,'evaluador'),'Evaluador (todos)');
   const q=document.getElementById('f-search').value,fs=document.getElementById('f-sector').value,fe=document.getElementById('f-evaluador').value,
@@ -525,13 +541,36 @@ function personaModal(i){const edit=(typeof i==='number');const p=edit?personal[
     <div class="field"><label>Sueldo base $ — solo para simular el incentivo en pesos (opcional)</label><input type="number" id="p-sueldo" value="${p.sueldo||0}"></div>
     <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="savePersona(${edit?i:-1})">Guardar</button></div>`;
   document.getElementById('modal').style.display='flex';}
-function savePersona(i){const g=id=>document.getElementById(id).value;
-  const o={leg:g('p-leg').trim(),nom:g('p-nom').trim(),sec:g('p-sec').trim(),pue:g('p-pue').trim(),evaluador:g('p-eval').trim()||'—',
-    tipo:g('p-tipo'),spm:+g('p-spm'),estado:g('p-estado'),acceso:g('p-acceso'),sueldo:+g('p-sueldo')||0};
-  if(!o.leg||!o.nom){toast('Legajo y nombre obligatorios','err');return;}
-  if(i>=0)personal[i]=o;else{if(personal.find(x=>x.leg===o.leg)){toast('Ese legajo ya existe','err');return;}personal.push(o);}
-  DB.save(K.pers,personal);closeModal();rPersonal();toast(i>=0?'Persona actualizada':'Persona dada de alta');}
-function delPersona(i){if(!confirm('¿Eliminar de la nómina? (para inactivar, mejor poné Estado = Baja)'))return;personal.splice(i,1);DB.save(K.pers,personal);rPersonal();toast('Eliminado','warn');}
+async function savePersona(i) {
+  const g = id => document.getElementById(id).value;
+  const o = {
+    leg: g('p-leg').trim(), nom: g('p-nom').trim(), sec: g('p-sec').trim(), pue: g('p-pue').trim(),
+    evaluador: g('p-eval').trim() || '—', tipo: g('p-tipo'), spm: +g('p-spm'),
+    estado: g('p-estado'), acceso: g('p-acceso'), sueldo: +g('p-sueldo') || 0,
+  };
+  if (!o.leg || !o.nom) { toast('Legajo y nombre obligatorios', 'err'); return; }
+  try {
+    if (i >= 0) await Api.updatePersonal(personal[i].leg, toApiPersona(o));
+    else await Api.createPersonal(toApiPersona(o));
+  } catch (err) {
+    toast(err.message, 'err');
+    return;
+  }
+  closeModal();
+  await rPersonal();
+  toast(i >= 0 ? 'Persona actualizada' : 'Persona dada de alta');
+}
+async function delPersona(i) {
+  if (!confirm('¿Eliminar de la nómina? (para inactivar, mejor poné Estado = Baja)')) return;
+  try {
+    await Api.deletePersonal(personal[i].leg);
+  } catch (err) {
+    toast(err.message, 'err');
+    return;
+  }
+  await rPersonal();
+  toast('Eliminado', 'warn');
+}
 
 /* ============ EVALUACIONES ============ */
 function rEval(){const perm=ROLES[SESSION.role],carga=perm.carga;const F=crit.factores;
@@ -1087,11 +1126,29 @@ function impPreview(){if(!document.getElementById('map-leg'))return;const {out,m
   const spmN=out.filter(x=>x.spm).length;const bajas=out.filter(x=>x.estado==='Baja').length;
   const warn=!map.spm?' · <b style="color:var(--amb)">no mapeaste SPM: derivado del Tipo</b>':'';
   document.getElementById('imp-prev').innerHTML=`Se importarán <b>${out.length}</b> personas · <b>${spmN}</b> participan SPM · ${bajas} en baja${warn}`;}
-function applyImport(){const {out}=buildImport();if(!out.length){toast('No hay filas válidas (revisá Legajo y Nombre)','err');return;}
+async function applyImport(){
+  const {out}=buildImport();
+  if(!out.length){toast('No hay filas válidas (revisá Legajo y Nombre)','err');return;}
   const mode=document.getElementById('imp-mode').value;
-  if(mode==='replace'){if(!confirm(`¿Reemplazar TODA la nómina actual (${personal.length}) por las ${out.length} importadas?`))return;personal=out;}
-  else{const byLeg={};personal.forEach(p=>byLeg[p.leg]=p);out.forEach(im=>{byLeg[im.leg]={...(byLeg[im.leg]||{}),...im};});personal=Object.values(byLeg);}
-  DB.save(K.pers,personal);closeModal();rPersonal();toast(`Nómina importada (${out.length} filas)`);}
+  if(mode==='replace'&&!confirm(`¿Reemplazar TODA la nómina actual (${personal.length}) por las ${out.length} importadas?`))return;
+  closeModal();
+  try {
+    if (mode === 'replace') {
+      for (const p of personal) { await Api.deletePersonal(p.leg); }
+      for (const im of out) { await Api.createPersonal(toApiPersona(im)); }
+    } else {
+      const existentes = new Set(personal.map(p => p.leg));
+      for (const im of out) {
+        if (existentes.has(im.leg)) await Api.updatePersonal(im.leg, toApiPersona(im));
+        else await Api.createPersonal(toApiPersona(im));
+      }
+    }
+  } catch (err) {
+    toast('Error importando: ' + err.message, 'err');
+  }
+  await rPersonal();
+  toast(`Nómina importada (${out.length} filas)`);
+}
 
 /* ============ UTILS ============ */
 function esc(s){return (s||'').toString().replace(/"/g,'&quot;').replace(/</g,'&lt;')}
