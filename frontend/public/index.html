@@ -309,12 +309,7 @@ tbody input,tbody select{width:100%;text-align:center}tbody input.num{width:70px
 
 <script src="api.js"></script>
 <script>
-/* ============ PERSISTENCIA ============ */
-const DB={save(k,d){localStorage.setItem(k,JSON.stringify(d))},load(k,def){try{return JSON.parse(localStorage.getItem(k))??def}catch{return def}},clear(k){localStorage.removeItem(k)}};
-const K={users:'bp5_users',pers:'bp5_personal',cfg:'bp5_cfg',crit:'bp5_criteria',cal:'bp5_calendar',eval:'bp5_eval',hist:'bp5_hist',fin:'bp5_fin',sess:'bp5_session'};
-function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return (h>>>0).toString(16)}
 function uid(){return Math.random().toString(36).slice(2,8)}
-function mul32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 /* ============ ROLES ============ */
 const ROLES={
@@ -329,135 +324,76 @@ const NAV=[{id:'inicio',ico:'⌂',label:'Inicio'},{id:'personal',ico:'👥',labe
   {id:'cal',ico:'📅',label:'Calendario'},
   {id:'cfg',ico:'⚙',label:'Configuración'},{id:'users',ico:'🔑',label:'Usuarios y permisos'}];
 
-/* ============ NÓMINA DEMO (209, ~102 SPM) ============ */
-const APE=['ACOSTA','ACUÑA','ALBARENGA','ALVAREZ','AMBROGIO','ARENALES','ARGUELLO','ASTEZANO','BACHMEIER','BAUMANN','BELIS','BENITEZ','BRIZUELA','CABRERA','CACERES','CARDOZO','CASTRO','CENTENO','CORONEL','CRUZ','DELBINO','DIAZ','DOMINGUEZ','ESCOBAR','FERNANDEZ','FIGUEROA','FLORES','GAUNA','GIMENEZ','GOMEZ','GONZALEZ','GUZMAN','HEREDIA','IBARRA','JUAREZ','LEDESMA','LOPEZ','LUNA','MAIDANA','MANSILLA','MARTINEZ','MEDINA','MENDEZ','MERELES','MOLINA','MONTENEGRO','MORALES','MUÑOZ','NUÑEZ','OLGUIN','ORTIZ','OTTONELLI','PAEZ','PALACIOS','PEREYRA','PEREZ','QUIROGA','RAMIREZ','RIOS','RIVERO','RODRIGUEZ','ROJAS','ROMERO','SANCHEZ','SCHMIDT','SILVA','SORIA','SOSA','SUAREZ','TOLEDO','VEGA','VELAZQUEZ','VERON','VILLALBA','ZARATE','ZINGERLING'];
-const NOM=['ADRIAN','ALBERTO','ARIEL','BRIAN','CARLOS','CRISTIAN','DANIEL','DARIO','DIEGO','EDUARDO','EMILIANO','FABIAN','FEDERICO','FRANCO','GABRIEL','GERMAN','GUSTAVO','HERNAN','HUGO','JAVIER','JORGE','JOSE','JUAN','LEANDRO','LUCAS','LUIS','MARCELO','MARCOS','MARIANO','MARTIN','MATIAS','MAURO','NICOLAS','PABLO','RAMON','RAUL','RICARDO','ROBERTO','RODRIGO','SEBASTIAN','SERGIO','WALTER'];
-// sectores productivos (participan SPM) con su evaluador
-const PROD=[['Producción taller','Ottonelli',['Soldador','Armador','Trazador','Operador SAW','Amolador','Ayudante']],
-  ['Tanques en Serie','Foos',['Soldador','Trazador-Armador','Armador','Ayudante']],
-  ['Mantenimiento','Sánchez',['Mecánico','Electricista','Mant. vehículos','Ayudante']],
-  ['Pintura y Arenado','Astezano',['Pintor','Arenador','Ayudante']],
-  ['Trazado y Armado','Zingerling',['Trazador','Armador','Plegador']],
-  ['Logística y Grúas','Delbino',['Chofer de grúa','Autoelevadorista','Pañolero']]];
-const MENS=[['Administración',['Administrativo','Liquidador','Recepcionista']],['Calidad',['Inspector','Analista QA','Documentalista']],
-  ['Ingeniería',['Ingeniero','Proyectista','Dibujante']],['Compras',['Comprador','Analista compras']],
-  ['Ventas',['Vendedor','Asesor comercial']],['Depósito',['Depositante','Control stock']]];
-function genNomina(){
-  const rnd=mul32(20260901);const pick=a=>a[Math.floor(rnd()*a.length)];const list=[];let leg=1001;
-  const nm=()=>`${pick(APE)}, ${pick(NOM)} ${pick(NOM)}`;
-  // 102 participantes SPM (jornalizados) repartidos en sectores productivos
-  const cupos=[26,20,18,14,14,10]; // suma 102
-  PROD.forEach((s,i)=>{for(let k=0;k<cupos[i];k++){
-    const estado=(rnd()<0.03)?'Baja':'Activo';
-    list.push({leg:String(leg++),nom:nm(),sec:s[0],pue:pick(s[2]),evaluador:s[1],tipo:'Jornalizado',spm:1,estado,acceso:'—',sueldo:0});
-  }});
-  // 107 mensuales (no SPM)
-  let rem=107,mi=0;
-  while(rem>0){const s=MENS[mi%MENS.length];const estado=(rnd()<0.03)?'Baja':'Activo';
-    list.push({leg:String(leg++),nom:nm(),sec:s[0],pue:pick(s[1]),evaluador:'—',tipo:'Mensual',spm:0,estado,acceso:'—',sueldo:0});
-    rem--;mi++;}
-  return list;
-}
-
 /* ============ SEED ============ */
 /* ============ CALENDARIO / FERIADOS ============ */
-const FERIADOS_2026={
-  '2026-01-01':'Año Nuevo','2026-02-16':'Carnaval','2026-02-17':'Carnaval',
-  '2026-03-24':'Día Nacional de la Memoria por la Verdad y la Justicia',
-  '2026-04-02':'Día del Veterano y de los Caídos en Malvinas','2026-04-03':'Viernes Santo',
-  '2026-05-01':'Día del Trabajador','2026-05-25':'Día de la Revolución de Mayo',
-  '2026-06-15':'Paso a la Inmortalidad del Gral. Güemes','2026-06-20':'Paso a la Inmortalidad del Gral. Belgrano',
-  '2026-07-09':'Día de la Independencia','2026-08-17':'Paso a la Inmortalidad del Gral. San Martín',
-  '2026-10-12':'Día del Respeto a la Diversidad Cultural','2026-11-23':'Día de la Soberanía Nacional',
-  '2026-12-08':'Inmaculada Concepción de María','2026-12-25':'Navidad'};
-function defCalendar(){return{reglas:{lunJue:9,vie:8,sab:0,dom:0,descanso:1},feriados:{...FERIADOS_2026},dias:{}};}
 const DOW_ES=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-/* Rúbrica resumida del instructivo (editable en Configuración) */
-const DEFAULT_RUB={
-  p1:{desc:'Actúa por cuenta propia, toma la iniciativa y aporta mejoras sin esperar instrucciones.',rub:{
-    1:'Requiere supervisión constante y espera instrucciones detalladas; rara vez aporta ideas o soluciones.',
-    2:'Competente pero espera instrucciones antes de actuar; muestra iniciativa en ocasiones y necesita recordatorios.',
-    3:'Toma la iniciativa en situaciones nuevas sin supervisión; aporta ideas y soluciones para mejorar los procesos.',
-    4:'Busca constantemente oportunidades de mejorar e innovar; soluciones creativas y alto grado de autonomía.'}},
-  p2:{desc:'Interés y compromiso con la calidad del trabajo: presencia en el puesto, respeto y cuidado de herramientas.',rub:{
-    1:'Falta de interés y compromiso; fuera del puesto, uso de celular, no respeta a colegas ni cuida herramientas.',
-    2:'Interés moderado; su conducta a veces afecta la productividad, se ausenta del puesto o usa dispositivos personales.',
-    3:'Comprometido y puntual; siempre en su puesto, respetuoso con pares y supervisores, cuida herramientas y equipos.',
-    4:'Alto interés, compromiso y entusiasmo que contribuye significativamente a la productividad.'}},
-  p3:{desc:'Disposición a colaborar, comunicación y compromiso con el equipo y la empresa, incluso fuera del horario.',rub:{
-    1:'Falta de interés en colaborar; no se puede contar con él fuera de horario y su comunicación es mínima.',
-    2:'Colaboración ocasional, con dificultades o pasividad; baja disposición a participar más allá de su rol.',
-    3:'Colaboración constante y proactiva; comprometido con los valores de la empresa, se puede contar con él ante necesidad.',
-    4:'Colaborador destacado; soluciones creativas, siempre disponible, miembro muy valioso del equipo.'}},
-  s1:{desc:'Correcta gestión y disposición de los residuos en el sector.',rub:{
-    1:'No muestra preocupación por la gestión de residuos; requiere supervisión constante.',
-    2:'En ocasiones muestra interés y preocupación por la gestión de residuos.',
-    3:'Dispone los residuos de manera correcta y consistente en su sector.',
-    4:'Gestión de residuos ejemplar; promueve activamente buenas prácticas de disposición.'}},
-  s2:{desc:'Uso correcto y consistente de los elementos de protección personal.',rub:{
-    1:'No utiliza adecuadamente los EPP; ignora las normativas de seguridad.',
-    2:'Uso irregular de EPP; a veces sigue las normas pero en ocasiones se olvida.',
-    3:'Compromiso constante con las políticas de seguridad; participa en capacitación y concientización.',
-    4:'Contribuye a la prevención de incidentes y promueve una cultura de seguridad; incidentes muy bajos o nulos.'}},
-  s3:{desc:'Mantenimiento del orden y la limpieza del lugar de trabajo.',rub:{
-    1:'Lugar de trabajo en desorden y suciedad constante; no cumple las normas de limpieza y orden.',
-    2:'El lugar suele estar desordenado; cumple con limpieza y orden solo en algunas ocasiones.',
-    3:'Lugar generalmente limpio y organizado; cumple de manera consistente con las normas.',
-    4:'Lugar impecable y altamente organizado; promueve la limpieza y sirve de ejemplo para otros.'}}
-};
-function critWith(id,label){const d=DEFAULT_RUB[id]||{};return {id,label,desc:d.desc||'',rub:d.rub?{...d.rub}:{}};}
-function defCriteria(){return{base:15,  factores:{hs:{ico:'⏱',label:'Horas Productivas',peso:25},pred:{ico:'🤝',label:'Predisposición con la empresa',peso:50},sh:{ico:'🦺',label:'Seguridad, Orden y Limpieza',peso:25}},
-  pred:[critWith('p1','Iniciativa'),critWith('p2','Conducta'),critWith('p3','Colaboración')],
-  sh:[critWith('s1','Disposición de Residuos'),critWith('s2','Uso de EPP'),critWith('s3','Orden y Limpieza')],
-  niveles:[{n:1,pct:0,label:'No cumple'},{n:2,pct:50,label:'Regular'},{n:3,pct:100,label:'Esperado'},{n:4,pct:125,label:'Sobresaliente'}]};}
-/* completa desc/rub en criterios ya guardados sin perder ediciones de label */
-function migrateCrit(){let ch=false;['pred','sh'].forEach(g=>{(crit[g]||[]).forEach(c=>{
-  if(c.rub&&Object.keys(c.rub).length)return;
-  if(DEFAULT_RUB[c.id]){c.desc=c.desc||DEFAULT_RUB[c.id].desc;c.rub={...DEFAULT_RUB[c.id].rub};ch=true;}
-  else{c.desc=c.desc||'';c.rub=c.rub||{};}});});if(ch)DB.save(K.crit,crit);}
-function seed(){
-  if(!DB.load(K.users,null)) DB.save(K.users,[
-    {user:'admin',pass:hash('admin123'),name:'RRHH — Capital Humano',role:'admin',evaluador:''},
-    {user:'foos',pass:hash('foos123'),name:'José C. Foos',role:'supervisor',evaluador:'Foos'},
-    {user:'ottonelli',pass:hash('otto123'),name:'D. Ottonelli',role:'supervisor',evaluador:'Ottonelli'},
-    {user:'produccion',pass:hash('prod123'),name:'Gerencia de Producción',role:'produccion',evaluador:''},
-    {user:'schmidt',pass:hash('syh123'),name:'S. Schmidt — Seg&Higiene',role:'syh',evaluador:''}
-  ]);
-  if(!DB.load(K.pers,null)) DB.save(K.pers,genNomina());
-  if(!DB.load(K.cfg,null)) DB.save(K.cfg,{mes:defMes(),hn:176,desc:20});
-  if(!DB.load(K.crit,null)) DB.save(K.crit,defCriteria());
-  if(!DB.load(K.cal,null)) DB.save(K.cal,defCalendar());
-  if(!DB.load(K.eval,null)){ // precarga horas demo del mes para participantes activos
-    const m=defMes(),cr=defCriteria(),ev={};ev[m]={};const rnd=mul32(7);
-    DB.load(K.pers,[]).filter(p=>p.spm&&p.estado==='Activo').forEach(p=>{
-      const o={vac:0,real:Math.round(150+rnd()*70),pred:{},sh:{}};ev[m][p.leg]=o;});
-    DB.save(K.eval,ev);
-  }
-}
 function defMes(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function mesTxt(m){if(!m)return'';const[y,mm]=m.split('-');return `${MESES[+mm-1]} ${y}`;}
 
-let SESSION=null,users=[],personal=[],cfg={},crit={},cal={},evalData={},_hsCache={};
+let SESSION=null,users=[],personal=[],cfg={},crit={},cal=defCalendarShape(),evalData={};
+function defCalendarShape(){return{reglas:{lunJue:0,vie:0,sab:0,dom:0,descanso:0},feriados:{},dias:{}};}
 let colView=DB.load('bp5_colview',{sector:true,evaluador:true});
 function applyColView(){const m=document.querySelector('main');if(!m)return;m.classList.toggle('hide-sec',!colView.sector);m.classList.toggle('hide-ev',!colView.evaluador);}
 function toggleCol(k){colView[k]=!colView[k];DB.save('bp5_colview',colView);applyColView();syncColToggles();}
 function syncColToggles(){document.querySelectorAll('.col-sector').forEach(c=>c.checked=colView.sector);document.querySelectorAll('.col-evaluador').forEach(c=>c.checked=colView.evaluador);}
-function reload(){users=DB.load(K.users,[]);personal=DB.load(K.pers,[]);cfg=DB.load(K.cfg,{});crit=DB.load(K.crit,defCriteria());cal=DB.load(K.cal,defCalendar());evalData=DB.load(K.eval,{});_hsCache={};migrateCrit();}
-function setMes(m){cfg.mes=m;DB.save(K.cfg,cfg);syncMesInputs();}
+function mapNiveles(rows) {
+  return rows.map(r => ({ n: r.numero, pct: r.porcentaje, label: r.label }));
+}
+function mapCrit(rows) {
+  return rows.map(c => ({ id: c.id, label: c.label, desc: c.descripcion, rub: c.rubricas }));
+}
+function mapFactores(rows) {
+  const out = {};
+  rows.forEach(f => { out[f.factor_key] = { ico: f.icono, label: f.label, peso: f.peso }; });
+  return out;
+}
+async function reload() {
+  const [cfgRes, criteriosRes, factoresRes, nivelesRes] = await Promise.all([
+    Api.getConfig(), Api.getCriterios(), Api.getFactores(), Api.getNiveles(),
+  ]);
+  cfg = cfgRes;
+  crit = {
+    base: Number(cfg.bono_base_pct) || 0,
+    factores: mapFactores(factoresRes),
+    pred: mapCrit(criteriosRes.pred),
+    sh: mapCrit(criteriosRes.sh),
+    niveles: mapNiveles(nivelesRes),
+  };
+}
+async function setMes(m) {
+  cfg.mes = m;
+  syncMesInputs();
+  try { await Api.saveConfig(cfg); } catch (err) { toast('No se pudo guardar el mes: ' + err.message, 'err'); }
+}
 function syncMesInputs(){['per-mes','ev-mes','c-mes','cal-mes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=cfg.mes;});}
 
 /* ============ AUTH ============ */
-function doLogin(){const u=document.getElementById('l-user').value.trim(),p=document.getElementById('l-pass').value;
-  const us=DB.load(K.users,[]).find(x=>x.user===u);
-  if(!us||us.pass!==hash(p)){document.getElementById('l-err').textContent='Usuario o contraseña incorrectos';return;}
-  SESSION={user:us.user,name:us.name,role:us.role,evaluador:us.evaluador};DB.save(K.sess,SESSION);startApp();}
-function logout(){DB.clear(K.sess);location.reload();}
-function startApp(){reload();
-  document.getElementById('login').style.display='none';document.getElementById('app').style.display='grid';
-  document.getElementById('u-name').textContent=SESSION.name;document.getElementById('u-role').textContent=ROLES[SESSION.role].label;
-  document.getElementById('u-sector').textContent=SESSION.evaluador?('Evalúa: '+SESSION.evaluador):'';
-  buildNav();syncMesInputs();goto(ROLES[SESSION.role].sees[0]);}
+async function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  document.getElementById('l-err').textContent = '';
+  try {
+    const { user } = await Api.login(u, p);
+    SESSION = { user: user.username, name: user.name, role: user.role, evaluador: user.evaluador_nombre };
+    await reload();
+    startApp();
+  } catch (err) {
+    document.getElementById('l-err').textContent = 'Usuario o contraseña incorrectos';
+  }
+}
+async function logout() {
+  try { await Api.logout(); } catch { /* si falla igual reiniciamos la vista */ }
+  location.reload();
+}
+function startApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  document.getElementById('u-name').textContent = SESSION.name;
+  document.getElementById('u-role').textContent = ROLES[SESSION.role].label;
+  document.getElementById('u-sector').textContent = SESSION.evaluador ? ('Evalúa: ' + SESSION.evaluador) : '';
+  buildNav(); syncMesInputs(); goto(ROLES[SESSION.role].sees[0]);
+}
 
 /* ============ NAV ============ */
 function buildNav(){const perm=ROLES[SESSION.role],nav=document.getElementById('nav');nav.innerHTML='';
@@ -469,7 +405,6 @@ function goto(id){if(!ROLES[SESSION.role].sees.includes(id))return;
   renderMap[id]&&renderMap[id]();applyColView();syncColToggles();}
 
 /* ============ CÁLCULO ============ */
-function nf(n){const lv=crit.niveles.find(x=>x.n==n);return lv?(+lv.pct||0)/100:0;}
 function defaultNivel(){const e=crit.niveles.find(x=>+x.pct===100);return e?e.n:(crit.niveles[0]?.n||1);}
 function daysOfMonth(mes){const[y,m]=mes.split('-').map(Number);const n=new Date(y,m,0).getDate();const arr=[];
   for(let d=1;d<=n;d++){arr.push({d,iso:`${mes}-${String(d).padStart(2,'0')}`,dow:new Date(y,m-1,d).getDay()});}return arr;}
@@ -483,13 +418,6 @@ function dayInfo(iso,dow){const R=cal.reglas;const ov=cal.dias[iso];
 function calTotals(mes){let brutas=0,desc=0,netas=0,dias=0;
   daysOfMonth(mes).forEach(({iso,dow})=>{const i=dayInfo(iso,dow);brutas+=i.brutas;desc+=i.desc;netas+=i.netas;if(i.netas>0)dias++;});
   return {brutas,desc,netas,dias};}
-function hsBase(){if(_hsCache[cfg.mes]==null)_hsCache[cfg.mes]=calTotals(cfg.mes).netas;return _hsCache[cfg.mes];}
-function avgCrit(store,list){if(!list.length)return 0;let s=0;list.forEach(c=>s+=nf(store?.[c.id]));return s/list.length;}
-function calcRow(leg){const e=evalData[cfg.mes]?.[leg]||{};const p=personal.find(x=>x.leg===leg)||{};
-  const hsEsp=Math.max(hsBase()-(+e.vac||0),0);const real=+e.real||0;
-  const fHs=hsEsp>0?Math.min(real/hsEsp,1.25):0;const fPr=avgCrit(e.pred,crit.pred);const fSh=avgCrit(e.sh,crit.sh);
-  const base=(+crit.base||0)/100,wHs=(+crit.factores.hs.peso||0)/100,wPr=(+crit.factores.pred.peso||0)/100,wSh=(+crit.factores.sh.peso||0)/100;
-  const res=real>0?base*(wHs*fHs+wPr*fPr+wSh*fSh):0;return {hsEsp,real,fHs,fPr,fSh,res,inc:(+p.sueldo||0)*res,e,p};}
 function badge(res,real){const pct=(res*100).toFixed(2)+'%';let c='b-ok';const base=(+crit.base||0)/100;
   if(real===0||res===0)c='b-0';else if(res<base*0.75)c='b-low';else if(res>=base*1.10)c='b-top';return `<span class="badge ${c} calc">${pct}</span>`;}
 /* resultado de UN factor (0..1.25) como %, para la vista del evaluador que lo carga */
@@ -1170,8 +1098,16 @@ function toast(msg,tipo='ok'){const t=document.createElement('div');t.style.cssT
 
 const renderMap={inicio:rInicio,personal:rPersonal,eval:rEval,dash:rDash,res:rRes,hist:rHist,cal:rCal,cfg:rCfg,users:rUsers};
 
-seed();reload();
-const s=DB.load(K.sess,null);if(s){SESSION=s;startApp();}
+(async function boot() {
+  try {
+    const { user } = await Api.me();
+    SESSION = { user: user.username, name: user.name, role: user.role, evaluador: user.evaluador_nombre };
+    await reload();
+    startApp();
+  } catch {
+    // sin sesion activa: se queda en la pantalla de login (ya visible por defecto)
+  }
+})();
 </script>
 </body>
 </html>
