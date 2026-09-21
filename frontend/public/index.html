@@ -1403,13 +1403,14 @@ function showMapping(){const m=autoMap();
 function parseSpm(v,tipo){if(v!==undefined&&v!==''){const s=String(v).toLowerCase().trim();return (['1','si','sí','x','true','verdadero','participa'].includes(s))?1:0;}
   return /jornal/i.test(tipo||'')?1:0;}
 function parseEstado(v){if(v===undefined||v==='')return 'Activo';const s=String(v).toLowerCase();return /baja|inactiv|egres|0/.test(s)?'Baja':'Activo';}
+function parseTipo(v){if(v===undefined||v==='')return 'Jornalizado';return /mensual/i.test(String(v))?'Mensual':'Jornalizado';}
 function parseMonto(v){if(v===''||v==null)return 0;if(typeof v==='number')return v;
   let s=String(v).replace(/[^\d.,-]/g,'');if(!s)return 0;
   if(s.includes(','))s=s.replace(/\./g,'').replace(',','.'); /* AR: punto=miles, coma=decimal */
   else if((s.match(/\./g)||[]).length>1||/\.\d{3}(\D|$)/.test(s))s=s.replace(/\./g,''); /* puntos de miles */
   return +s||0;}
 function buildImport(){const g=f=>document.getElementById('map-'+f).value;const map={};Object.keys(IMP_LABELS).forEach(f=>map[f]=g(f));
-  const out=_impRows.map(r=>{const tipo=(map.tipo?String(r[map.tipo]):'').trim()||'Jornalizado';
+  const out=_impRows.map(r=>{const tipo=parseTipo(map.tipo?r[map.tipo]:undefined);
     return {leg:String(map.leg?r[map.leg]:'').trim(),nom:String(map.nom?r[map.nom]:'').trim(),
       sec:String(map.sec?r[map.sec]:'').trim(),pue:String(map.pue?r[map.pue]:'').trim(),
       evaluador:String(map.evaluador?r[map.evaluador]:'').trim()||'—',tipo,
