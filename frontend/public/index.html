@@ -790,13 +790,29 @@ async function renderFinEstado(){
 }
 
 /* ============ DASHBOARD ============ */
+/* fila de resultados tal como la devuelve la API (ya viene calculada); para roles
+   no-admin el backend omite sueldo_base/inc y esos campos quedan undefined, que es
+   equivalente al chequeo `perm.money&&people.some(p=>+p.sueldo>0)` del original. */
+function mapResultado(r) {
+  return {
+    leg: r.legajo, nom: r.nombre, sec: r.sector, evaluador: r.evaluador,
+    sueldo: r.sueldo_base, hsEsp: r.hsEsp, real: r.real,
+    fHs: r.fHs, fPr: r.fPr, fSh: r.fSh, res: r.res, inc: r.inc,
+  };
+}
+let dashPeople = [];
 let chDist,chSec;
-function rDash(){document.getElementById('pill-dash').textContent=mesTxt(cfg.mes);
-  const people=personal.filter(p=>p.spm&&p.estado==='Activo'&&calcRow(p.leg).real>0);let tRes=0,tMoney=0;
+async function rDash(){
+  document.getElementById('pill-dash').textContent=mesTxt(cfg.mes);
+  let all;
+  try { all = (await Api.getResultados(cfg.mes)).map(mapResultado); }
+  catch (err) { toast('No se pudieron cargar los resultados: ' + err.message, 'err'); return; }
+  dashPeople = all;
+  const people=all.filter(p=>p.real>0);let tRes=0,tMoney=0;
   const buckets={'Sin bono':0,'Bajo esperado':0,'Esperado':0,'Sobresaliente':0};const bySec={};const base=(+crit.base||0)/100;
-  people.forEach(p=>{const c=calcRow(p.leg);tRes+=c.res;tMoney+=c.inc;
-    if(c.res===0)buckets['Sin bono']++;else if(c.res<base*0.95)buckets['Bajo esperado']++;else if(c.res<=base*1.02)buckets['Esperado']++;else buckets['Sobresaliente']++;
-    bySec[p.sec]=bySec[p.sec]||{s:0,n:0};bySec[p.sec].s+=c.res;bySec[p.sec].n++;});
+  people.forEach(p=>{tRes+=p.res;tMoney+=p.inc||0;
+    if(p.res===0)buckets['Sin bono']++;else if(p.res<base*0.95)buckets['Bajo esperado']++;else if(p.res<=base*1.02)buckets['Esperado']++;else buckets['Sobresaliente']++;
+    bySec[p.sec]=bySec[p.sec]||{s:0,n:0};bySec[p.sec].s+=p.res;bySec[p.sec].n++;});
   const n=people.length;const haySueldos=people.some(p=>+p.sueldo>0);
   document.getElementById('dash-kpis').innerHTML=`<div class="kcard count"><div class="lbl">Evaluados</div><div class="val">${n}</div></div>
     <div class="kcard avg"><div class="lbl">Resultado prom.</div><div class="val">${n?(tRes/n*100).toFixed(1):0}%</div></div>`+
@@ -808,9 +824,17 @@ function rDash(){document.getElementById('pill-dash').textContent=mesTxt(cfg.mes
   chSec=new Chart(c2,{type:'bar',data:{labels:sl,datasets:[{data:sv,backgroundColor:'#2979FF',borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#657FA0',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#657FA0',callback:v=>v+'%'},grid:{color:'#1C2E44'}}}}});}
 
 /* ============ RESULTADOS ============ */
-function rRes(){const perm=ROLES[SESSION.role];document.getElementById('pill-res').textContent=mesTxt(cfg.mes);
-  document.getElementById('res-desc').textContent=perm.onlyMine?`Tus evaluados (${SESSION.evaluador})`:(perm.role==='syh'?'Todos los participantes SPM':'Consolidado del resultado (%). El $ es simulación opcional.');
-  let base=evaluables();
+let resPeopleAll = [];
+async function rRes(){
+  const perm=ROLES[SESSION.role];document.getElementById('pill-res').textContent=mesTxt(cfg.mes);
+  document.getElementById('res-desc').textContent=perm.onlyMine?`Tus evaluados (${SESSION.evaluador})`:(SESSION.role==='syh'?'Todos los participantes SPM':'Consolidado del resultado (%). El $ es simulación opcional.');
+  let base;
+  try {
+    base = (await Api.getResultados(cfg.mes)).map(mapResultado);
+    const evalMap = await Api.getEvaluaciones(cfg.mes);
+    evalByLeg = {}; Object.values(evalMap).map(mapEvalRow).forEach(p => { evalByLeg[p.leg] = p; });
+  } catch (err) { toast('No se pudieron cargar los resultados: ' + err.message, 'err'); return; }
+  resPeopleAll = base;
   document.getElementById('rf-evaluador').style.display=perm.onlyMine?'none':'';
   fillSelect('rf-sector',uniq(base,'sec'),'Sector (todos)');
   if(!perm.onlyMine)fillSelect('rf-evaluador',uniq(base,'evaluador'),'Evaluador (todos)');
@@ -827,30 +851,44 @@ function rRes(){const perm=ROLES[SESSION.role];document.getElementById('pill-res
   else th+=`<th>${carga==='pred'?'F.Pred':carga==='sh'?'F.S&H':'F.Hs'}</th><th>Resultado</th>`;
   if(simMoney)th+='<th>Sueldo (sim.)</th><th>Incentivo $ (sim.)</th>';th+='</tr>';document.getElementById('th-res').innerHTML=th;
   const tb=document.getElementById('tb-res');tb.innerHTML='';
-  people.forEach(p=>{const c=calcRow(p.leg);
+  people.forEach(p=>{
     let row=`<td class="l mono">${p.leg}</td><td class="l">${esc(p.nom)}</td><td class="l col-sec">${esc(p.sec)}</td>`;
-    if(esAdmin)row+=`<td class="calc f">${c.fHs.toFixed(3)}</td><td class="calc f">${c.fPr.toFixed(3)}</td><td class="calc f">${c.fSh.toFixed(3)}</td><td>${badge(c.res,c.real)}</td>`;
-    else{const f=resPropio(c,carga);row+=`<td class="calc f">${f.toFixed(3)}</td><td>${factorBadge(f)}</td>`;}
-    if(simMoney)row+=`<td class="calc">${fmt$(p.sueldo)}</td><td class="calc" style="color:var(--grn);font-weight:600">${fmt$(c.inc)}</td>`;
-    const tr=document.createElement('tr');tr.innerHTML=row;tb.appendChild(tr);});}
+    if(esAdmin)row+=`<td class="calc f">${p.fHs.toFixed(3)}</td><td class="calc f">${p.fPr.toFixed(3)}</td><td class="calc f">${p.fSh.toFixed(3)}</td><td>${badge(p.res,p.real)}</td>`;
+    else{const f=resPropio(p,carga);row+=`<td class="calc f">${f.toFixed(3)}</td><td>${factorBadge(f)}</td>`;}
+    if(simMoney)row+=`<td class="calc">${fmt$(p.sueldo)}</td><td class="calc" style="color:var(--grn);font-weight:600">${fmt$(p.inc)}</td>`;
+    const tr=document.createElement('tr');tr.innerHTML=row;tb.appendChild(tr);
+  });
+}
 
 /* ============ HISTORIAL ============ */
-function rHist(){const perm=ROLES[SESSION.role],hist=DB.load(K.hist,[]);
+async function rHist(){
+  const perm=ROLES[SESSION.role];
+  let hist;
+  try { hist = await Api.getHistorial(); }
+  catch (err) { toast('No se pudo cargar el historial: ' + err.message, 'err'); return; }
   document.getElementById('th-hist-money').style.display=perm.money?'':'none';
-  document.getElementById('hist-actions').innerHTML=(perm.role==='admin')?`<button class="btn-ok" onclick="cerrarPeriodo()">Cerrar período ${mesTxt(cfg.mes)}</button>`:'';
+  document.getElementById('hist-actions').innerHTML=(SESSION.role==='admin')?`<button class="btn-ok" onclick="cerrarPeriodo()">Cerrar período ${mesTxt(cfg.mes)}</button>`:'';
   const tb=document.getElementById('tb-hist');tb.innerHTML='';document.getElementById('hist-empty').style.display=hist.length?'none':'block';
-  hist.slice().reverse().forEach((h,idx)=>{const real=hist.length-1-idx;const tr=document.createElement('tr');
+  hist.slice().reverse().forEach(h=>{const tr=document.createElement('tr');
     tr.innerHTML=`<td class="l mono">${mesTxt(h.mes)}</td><td>${h.n}</td><td class="calc">${(h.avg*100).toFixed(1)}%</td>
-      <td class="calc" style="${perm.money?'':'display:none'}">${fmt$(h.money)}</td>
-      <td class="mono" style="font-size:11px;color:var(--t2)">${h.closed}</td>
-      <td>${perm.role==='admin'?`<button class="del" onclick="delHist(${real})">✕</button>`:''}</td>`;tb.appendChild(tr);});}
-function cerrarPeriodo(){if(!confirm(`¿Cerrar y archivar ${mesTxt(cfg.mes)}?`))return;
-  const parts=personal.filter(p=>p.spm&&p.estado==='Activo');
-  const snap=parts.map(p=>{const c=calcRow(p.leg);return {leg:p.leg,nom:p.nom,sec:p.sec,res:c.res,inc:c.inc};});
-  const ev=snap.filter(x=>x.res>0);const money=ev.reduce((a,b)=>a+b.inc,0),avg=ev.length?ev.reduce((a,b)=>a+b.res,0)/ev.length:0;
-  const hist=DB.load(K.hist,[]);hist.push({mes:cfg.mes,n:ev.length,avg,money,closed:new Date().toLocaleString('es-AR'),snapshot:snap});
-  DB.save(K.hist,hist);rHist();toast('Período archivado');}
-function delHist(i){if(!confirm('¿Eliminar del historial?'))return;const h=DB.load(K.hist,[]);h.splice(i,1);DB.save(K.hist,h);rHist();toast('Eliminado','warn');}
+      <td class="calc" style="${perm.money?'':'display:none'}">${perm.money?fmt$(h.money):''}</td>
+      <td class="mono" style="font-size:11px;color:var(--t2)">${new Date(h.cerrado_at).toLocaleString('es-AR')}</td>
+      <td>${SESSION.role==='admin'?`<button class="del" onclick="delHist('${h.mes}')">✕</button>`:''}</td>`;tb.appendChild(tr);});
+}
+async function cerrarPeriodo(){
+  if(!confirm(`¿Cerrar y archivar ${mesTxt(cfg.mes)}?`))return;
+  try { await Api.cerrarPeriodo(); }
+  catch (err) { toast(err.message, 'err'); return; }
+  await rHist();
+  toast('Período archivado');
+}
+async function delHist(mes){
+  if(!confirm('¿Eliminar del historial?'))return;
+  try { await Api.deleteHistorial(mes); }
+  catch (err) { toast(err.message, 'err'); return; }
+  await rHist();
+  toast('Eliminado','warn');
+}
 
 /* ============ CALENDARIO ============ */
 async function rCal(){
@@ -1152,12 +1190,14 @@ async function delUser(i){
 function closeModal(){document.getElementById('modal').style.display='none';}
 
 /* ============ EXPORT ============ */
-function exportXLSX(){const perm=ROLES[SESSION.role],carga=perm.carga;let base=evaluables();
+function exportXLSX(){
+  const perm=ROLES[SESSION.role],carga=perm.carga;
   const q=document.getElementById('rf-search').value,fs=document.getElementById('rf-sector').value,fe=perm.onlyMine?'':document.getElementById('rf-evaluador').value;
-  const people=base.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)).sort(ordNom);
-  const data=people.map(p=>{const c=calcRow(p.leg);
-    const resVal=(carga==='todo'?c.res:resPropio(c,carga))*100; /* valor plano con 2 decimales (no %) */
-    return {'Legajo':p.leg,'Apellido y Nombre':p.nom,'Resultado':resVal.toFixed(2).replace('.',',')};});
+  const people=resPeopleAll.filter(p=>textMatch(p,q)&&(!fs||p.sec===fs)&&(!fe||p.evaluador===fe)).sort(ordNom);
+  const data=people.map(p=>{
+    const resVal=(carga==='todo'?p.res:resPropio(p,carga))*100;
+    return {'Legajo':p.leg,'Apellido y Nombre':p.nom,'Resultado':resVal.toFixed(2).replace('.',',')};
+  });
   const ws=XLSX.utils.json_to_sheet(data);ws['!cols']=[{wch:10},{wch:32},{wch:12}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Resultados '+cfg.mes);
   XLSX.writeFile(wb,`Resultados_Bono_${cfg.mes}.xlsx`);toast('Resultados exportados');}
