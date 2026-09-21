@@ -200,7 +200,7 @@ tbody input,tbody select{width:100%;text-align:center}tbody input.num{width:70px
           <div class="month-sel"><label>Mes:</label><input type="month" id="ev-mes" onchange="setMes(this.value);rEval()"></div></div></div>
       <div class="warn-banner" id="eval-scope"></div>
       <div class="filters">
-        <input class="search txt" id="ef-search" placeholder="Buscar por nombre o legajo…" oninput="rEval()">
+        <input class="search txt" id="ef-search" placeholder="Buscar por nombre o legajo…" oninput="debouncedREval()">
         <select id="ef-sector" onchange="rEval()"></select>
         <select id="ef-evaluador" onchange="rEval()"></select>
         <span class="coltog"><span class="lbl">Ver:</span><label><input type="checkbox" class="col-sector" checked onchange="toggleCol('sector')">Sector</label><label id="ef-evtog-l"><input type="checkbox" class="col-evaluador" checked onchange="toggleCol('evaluador')">Evaluador</label></span>
@@ -660,21 +660,45 @@ async function rEval(){const perm=ROLES[SESSION.role],carga=perm.carga;const F=c
   });
   guiaInit(carga);renderFinEstado();
 }
+/* El buscador dispara un GET completo (y un re-armado de `evalByLeg`) por tecla.
+   Se debouncea con el helper de Task 19: baja el volumen de requests y la frecuencia
+   con la que un rebuild cae en medio de un guardado en vuelo. */
+const debouncedREval = debounce(rEval, 250);
 function nivSel(leg,grp,cid,v){const val=(v===undefined||v===null||v==='')?'':v;let o=`<option value="" ${val===''?'selected':''}>—</option>`;crit.niveles.forEach(l=>o+=`<option value="${l.n}" ${val==l.n?'selected':''}>${l.n}</option>`);
   return `<td><select class="niv" onfocus="guiaFocus('${grp}','${cid}','${val}')" onchange="onCritChange('${leg}','${grp}','${cid}',this.value)">${o}</select></td>`;}
 
 /* Guardado de una evaluación contra la API.
    `onHoras` dispara en cada tecla (oninput), así que dos PUT de la misma persona pueden
    solaparse: se encadenan por legajo para que el servidor los aplique en el orden tipeado
-   y para que la respuesta que se pinte sea siempre la del último patch enviado.
-   Devuelve {c, stale}: `stale` marca las respuestas intermedias (ya hay otro patch en vuelo). */
-const _evalSeq={},_evalQueue={};
+   y para que las respuestas lleguen en el mismo orden en que se enviaron.
+   Legajos distintos siguen guardando en paralelo; un error no traba la cola. */
+const _evalQueue={};
 function saveEval(leg,patch){
-  const seq=_evalSeq[leg]=(_evalSeq[leg]||0)+1;
   const prev=_evalQueue[leg]||Promise.resolve();
   const run=prev.then(()=>Api.saveEvaluacion(cfg.mes,leg,patch));
   _evalQueue[leg]=run.catch(()=>{});
-  return run.then(c=>({c,stale:seq!==_evalSeq[leg]}));
+  return run;
+}
+
+/* Aplica la respuesta autoritativa del server sobre la fila que está HOY en el cache.
+   Clave: `rEval()` reconstruye `evalByLeg` con objetos nuevos, así que la referencia
+   capturada antes del `await` puede quedar huérfana. Se re-resuelve `evalByLeg[leg]`
+   acá, en el momento en que llega la respuesta, y se hace el merge sobre esa fila viva.
+   Repinta el set COMPLETO de celdas calculadas (no sólo las del campo editado): la
+   respuesta siempre trae {hsEsp,fHs,fPr,fSh,res,inc} y la cola por legajo garantiza que
+   llegan en orden de envío, así que nunca se pisa un valor nuevo con uno viejo.
+   Devuelve la fila viva, o null si ese legajo ya no está en el cache actual. */
+function applyEvalResponse(leg,c){
+  const row=evalByLeg[leg];if(!row)return null;
+  Object.assign(row,c);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('hse_'+leg,c.hsEsp);
+  set('fhs_'+leg,(+c.fHs).toFixed(3));
+  set('fpr_'+leg,(+c.fPr).toFixed(3));
+  set('fsh_'+leg,(+c.fSh).toFixed(3));
+  const carga=ROLES[SESSION.role].carga;
+  const resu=document.getElementById('resu_'+leg);if(resu)resu.innerHTML=carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga));
+  return row;
 }
 
 /* cambio de nivel: guarda y actualiza SOLO esa fila + el panel guía (sin re-render, sin perder scroll) */
@@ -682,14 +706,11 @@ async function onCritChange(leg,grp,cid,val){
   const e=evalByLeg[leg];if(!e)return;
   e[grp]=e[grp]||{};e[grp][cid]=(val===''?0:+val);
   guiaShow(grp,cid,val); /* sólo depende del criterio elegido: no espera al servidor */
-  let r;
-  try { r = await saveEval(leg, { [grp]: { [cid]: val } }); }
+  let c;
+  try { c = await saveEval(leg, { [grp]: { [cid]: val } }); }
   catch (err) { toast('No se pudo guardar: ' + err.message, 'err'); return; }
-  const c=r.c;Object.assign(e, c);
-  if(r.stale)return;
+  if(!applyEvalResponse(leg, c))return; /* la fila ya no está en el cache actual */
   const carga=ROLES[SESSION.role].carga;
-  const fEl=document.getElementById((grp==='pred'?'fpr_':'fsh_')+leg);if(fEl)fEl.textContent=(grp==='pred'?c.fPr:c.fSh).toFixed(3);
-  const resu=document.getElementById('resu_'+leg);if(resu)resu.innerHTML=carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga));
   const comGrp=(carga==='pred')?'pred':(carga==='sh')?'sh':null;
   if(comGrp===grp){const falta=faltaJustificar(leg,grp);const tr=document.getElementById('row_'+leg);if(tr)tr.style.background=falta?'rgba(244,169,0,.06)':'';
     const com=document.getElementById('com_'+leg);if(com){com.style.borderColor=falta?'var(--amb)':'';com.placeholder=falta?'⚠ Justificá la nota ≠ Esperado':'Observaciones (opcional)';}}
@@ -698,8 +719,10 @@ async function onCritChange(leg,grp,cid,val){
 async function setCom(leg,grp,v){
   const e=evalByLeg[leg];if(!e)return;
   e.com=e.com||{};e.com[grp]=v;
-  try { await saveEval(leg, { com: { [grp]: v } }); }
-  catch (err) { toast('No se pudo guardar la observación: ' + err.message, 'err'); }
+  let c;
+  try { c = await saveEval(leg, { com: { [grp]: v } }); }
+  catch (err) { toast('No se pudo guardar la observación: ' + err.message, 'err'); return; }
+  applyEvalResponse(leg, c);
 }
 
 /* ---- Panel guía ---- */
@@ -732,15 +755,10 @@ function guiaInit(carga){const panel=document.getElementById('guia-panel');if(!p
 async function onHoras(leg,campo,val){
   const e=evalByLeg[leg];if(!e)return;
   e[campo]=(val===''?0:+val);
-  let r;
-  try { r = await saveEval(leg, { [campo]: e[campo] }); }
+  let c;
+  try { c = await saveEval(leg, { [campo]: e[campo] }); }
   catch (err) { toast('No se pudo guardar: ' + err.message, 'err'); return; }
-  const c=r.c;Object.assign(e, c);
-  if(r.stale)return; /* ya hay otro patch en vuelo: pinta el último, no éste */
-  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  set('hse_'+leg,c.hsEsp);set('fhs_'+leg,c.fHs.toFixed(3));
-  const carga=ROLES[SESSION.role].carga;
-  const resu=document.getElementById('resu_'+leg);if(resu)resu.innerHTML=carga==='todo'?badge(c.res,c.real):factorBadge(resPropio(c,carga));
+  applyEvalResponse(leg, c);
 }
 
 /* ---- Finalizar mi evaluación (blando, sin bloquear) ---- */
