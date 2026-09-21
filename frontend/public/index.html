@@ -783,15 +783,15 @@ function renderCal(){
     <div class="kcard avg"><div class="lbl">Hs esperadas base</div><div class="val">${t.netas}</div></div>`;
   renderFeriados();renderCalTable();
 }
-function saveReglasNow(){
-  return Api.saveReglas({ lun_jue: cal.reglas.lunJue, vie: cal.reglas.vie, sab: cal.reglas.sab, dom: cal.reglas.dom, descanso: cal.reglas.descanso })
+function saveReglasNow(payload){
+  return Api.saveReglas(payload)
     .catch(async err => { toast('No se pudo guardar la regla: ' + err.message, 'err'); await rCal(); });
 }
 const debouncedSaveReglas = debounce(saveReglasNow, 400);
 function setRegla(k,v){
   cal.reglas[k]=(v===''?0:+v);
   renderCal();
-  debouncedSaveReglas();
+  debouncedSaveReglas({ lun_jue: cal.reglas.lunJue, vie: cal.reglas.vie, sab: cal.reglas.sab, dom: cal.reglas.dom, descanso: cal.reglas.descanso });
 }
 function renderFeriados(){const box=document.getElementById('feriados-list');box.innerHTML='';
   const items=Object.entries(cal.feriados).sort((a,b)=>a[0]<b[0]?-1:1);
