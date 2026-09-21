@@ -380,6 +380,7 @@ async function reload() {
 async function setMes(m) {
   cfg.mes = m;
   syncMesInputs();
+  if (SESSION.role !== 'admin') return;
   try { await Api.saveConfig(cfg); } catch (err) { toast('No se pudo guardar el mes: ' + err.message, 'err'); }
 }
 function syncMesInputs(){['per-mes','ev-mes','c-mes','cal-mes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=cfg.mes;});}
