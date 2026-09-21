@@ -1204,13 +1204,14 @@ async function applyHoras(){
   if(!map.leg){toast('Falta mapear el Legajo','err');return;}
   if(!map.vac&&!map.real){toast('Mapeá al menos Vac o Hs reales','err');return;}
   let n=0,noEnc=0;
+  const mes=cfg.mes;
   for (const r of _hrRows) {
     const leg=String(r[map.leg]).trim();if(!leg)continue;
     if(!evalByLeg[leg]){noEnc++;continue;}
     const patch={};
     if(map.vac!=='')patch.vac=parseMonto(r[map.vac]);
     if(map.real!=='')patch.real=parseMonto(r[map.real]);
-    try { await Api.saveEvaluacion(cfg.mes, leg, patch); n++; }
+    try { await Api.saveEvaluacion(mes, leg, patch); n++; }
     catch (err) { toast(`Error en legajo ${leg}: ${err.message}`, 'err'); }
   }
   closeModal();await rEval();toast(`Horas actualizadas: ${n} persona(s)`+(noEnc?` · ${noEnc} legajo(s) no encontrados`:''));
@@ -1264,13 +1265,14 @@ async function applySH(){
   const cMap=crit.sh.map((c,i)=>document.getElementById('shmap-c'+i).value);
   const obsCol=document.getElementById('shmap-obs').value;
   let n=0,noEnc=0;
+  const mes=cfg.mes;
   for (const r of _shRows) {
     const leg=String(r[legCol]).trim();if(!leg)continue;
     if(!evalByLeg[leg]){noEnc++;continue;}
     const patch={sh:{}};
     crit.sh.forEach((c,i)=>{if(cMap[i]!=='')patch.sh[c.id]=normNiv(r[cMap[i]]);});
     if(obsCol!=='')patch.com={sh:String(r[obsCol]||'')};
-    try { await Api.saveEvaluacion(cfg.mes, leg, patch); n++; }
+    try { await Api.saveEvaluacion(mes, leg, patch); n++; }
     catch (err) { toast(`Error en legajo ${leg}: ${err.message}`, 'err'); }
   }
   closeModal();await rEval();toast(`S&H actualizado: ${n} persona(s)`+(noEnc?` · ${noEnc} legajo(s) no encontrados`:''));
