@@ -104,9 +104,28 @@ cat backup_20260101.sql | docker compose exec -T db psql -U sica sica_bonos
 
 ## Correr los tests del backend
 
+> **PELIGRO — los tests BORRAN la base de datos.** La suite corre contra la misma base
+> (`sica_bonos`) que usa la aplicación, y antes de cada archivo de tests hace un
+> `TRUNCATE` de **todas** las tablas. Correr `npm test` sobre una instalación en uso
+> **destruye toda la información real**: nómina, evaluaciones del mes, calendario,
+> configuración, historial y hasta los usuarios (después de correrlo no queda ni el
+> usuario `admin`, así que nadie puede volver a entrar) y además deja datos de prueba.
+>
+> Los tests son para desarrollo. **No correrlos nunca contra la instalación de producción.**
+> Si hace falta ejecutarlos en la misma máquina, hacer primero un backup (ver *Backups*)
+> y después restaurarlo, o levantar una base aparte apuntando `DATABASE_URL` a otro
+> nombre de base de datos.
+
 ```bash
 docker compose up -d db
 docker compose run --rm backend npm test
+```
+
+Para volver a dejar el sistema usable después de correr los tests hay que re-sembrar los
+datos iniciales y volver a cargar la nómina:
+
+```bash
+docker compose run --rm backend npm run seed
 ```
 
 ## Apagar el sistema
