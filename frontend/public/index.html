@@ -671,11 +671,14 @@ function nivSel(leg,grp,cid,v){const val=(v===undefined||v===null||v==='')?'':v;
    `onHoras` dispara en cada tecla (oninput), así que dos PUT de la misma persona pueden
    solaparse: se encadenan por legajo para que el servidor los aplique en el orden tipeado
    y para que las respuestas lleguen en el mismo orden en que se enviaron.
-   Legajos distintos siguen guardando en paralelo; un error no traba la cola. */
+   Legajos distintos siguen guardando en paralelo; un error no traba la cola.
+   `mes` viene SNAPSHOTEADO por el handler en el instante de la edición y se usa tal cual
+   acá: leer `cfg.mes` al momento del dequeue escribiría el valor que el usuario tipeó
+   mirando un mes en la fila de OTRO mes si mientras tanto cambió el selector. */
 const _evalQueue={};
-function saveEval(leg,patch){
+function saveEval(mes,leg,patch){
   const prev=_evalQueue[leg]||Promise.resolve();
-  const run=prev.then(()=>Api.saveEvaluacion(cfg.mes,leg,patch));
+  const run=prev.then(()=>Api.saveEvaluacion(mes,leg,patch));
   _evalQueue[leg]=run.catch(()=>{});
   return run;
 }
@@ -687,8 +690,13 @@ function saveEval(leg,patch){
    Repinta el set COMPLETO de celdas calculadas (no sólo las del campo editado): la
    respuesta siempre trae {hsEsp,fHs,fPr,fSh,res,inc} y la cola por legajo garantiza que
    llegan en orden de envío, así que nunca se pisa un valor nuevo con uno viejo.
-   Devuelve la fila viva, o null si ese legajo ya no está en el cache actual. */
-function applyEvalResponse(leg,c){
+   `mes` es el snapshot del handler: si el usuario ya navegó a otro mes, esta respuesta
+   es de un mes que no está en pantalla y mergearla contaminaría el cache del mes nuevo
+   (y de ahí el DOM y el xlsx de exportHoras). El dato correcto del mes actual ya lo trajo
+   el `rEval()` del propio cambio de mes.
+   Devuelve la fila viva, o null si la respuesta no aplica al mes/cache actual. */
+function applyEvalResponse(leg,c,mes){
+  if(mes!==cfg.mes)return null; /* el usuario cambió de mes: respuesta irrelevante */
   const row=evalByLeg[leg];if(!row)return null;
   Object.assign(row,c);
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -703,13 +711,14 @@ function applyEvalResponse(leg,c){
 
 /* cambio de nivel: guarda y actualiza SOLO esa fila + el panel guía (sin re-render, sin perder scroll) */
 async function onCritChange(leg,grp,cid,val){
+  const mes=cfg.mes; /* snapshot: el mes que el usuario está mirando AHORA */
   const e=evalByLeg[leg];if(!e)return;
   e[grp]=e[grp]||{};e[grp][cid]=(val===''?0:+val);
   guiaShow(grp,cid,val); /* sólo depende del criterio elegido: no espera al servidor */
   let c;
-  try { c = await saveEval(leg, { [grp]: { [cid]: val } }); }
+  try { c = await saveEval(mes, leg, { [grp]: { [cid]: val } }); }
   catch (err) { toast('No se pudo guardar: ' + err.message, 'err'); return; }
-  if(!applyEvalResponse(leg, c))return; /* la fila ya no está en el cache actual */
+  if(!applyEvalResponse(leg, c, mes))return; /* cambió el mes, o la fila ya no está en el cache */
   const carga=ROLES[SESSION.role].carga;
   const comGrp=(carga==='pred')?'pred':(carga==='sh')?'sh':null;
   if(comGrp===grp){const falta=faltaJustificar(leg,grp);const tr=document.getElementById('row_'+leg);if(tr)tr.style.background=falta?'rgba(244,169,0,.06)':'';
@@ -717,12 +726,13 @@ async function onCritChange(leg,grp,cid,val){
 }
 /* observación del evaluador: guarda el texto; el repintado lo hace onComChange */
 async function setCom(leg,grp,v){
+  const mes=cfg.mes; /* snapshot: el mes que el usuario está mirando AHORA */
   const e=evalByLeg[leg];if(!e)return;
   e.com=e.com||{};e.com[grp]=v;
   let c;
-  try { c = await saveEval(leg, { com: { [grp]: v } }); }
+  try { c = await saveEval(mes, leg, { com: { [grp]: v } }); }
   catch (err) { toast('No se pudo guardar la observación: ' + err.message, 'err'); return; }
-  applyEvalResponse(leg, c);
+  applyEvalResponse(leg, c, mes);
 }
 
 /* ---- Panel guía ---- */
@@ -753,12 +763,13 @@ function guiaInit(carga){const panel=document.getElementById('guia-panel');if(!p
 
 /* carga fluida de horas: guarda y actualiza solo esa fila, sin re-render (mantiene el foco) */
 async function onHoras(leg,campo,val){
+  const mes=cfg.mes; /* snapshot: el mes que el usuario está mirando AHORA */
   const e=evalByLeg[leg];if(!e)return;
   e[campo]=(val===''?0:+val);
   let c;
-  try { c = await saveEval(leg, { [campo]: e[campo] }); }
+  try { c = await saveEval(mes, leg, { [campo]: e[campo] }); }
   catch (err) { toast('No se pudo guardar: ' + err.message, 'err'); return; }
-  applyEvalResponse(leg, c);
+  applyEvalResponse(leg, c, mes);
 }
 
 /* ---- Finalizar mi evaluación (blando, sin bloquear) ---- */
