@@ -105,26 +105,50 @@ cat backup_20260101.sql | docker compose exec -T db psql -U sica sica_bonos
 ## Correr los tests del backend
 
 > **PELIGRO — los tests BORRAN la base de datos.** La suite corre contra la misma base
-> (`sica_bonos`) que usa la aplicación, y antes de cada archivo de tests hace un
+> (`sica_bonos`) que usa la aplicación, y antes de cada test hace un
 > `TRUNCATE` de **todas** las tablas. Correr `npm test` sobre una instalación en uso
 > **destruye toda la información real**: nómina, evaluaciones del mes, calendario,
 > configuración, historial y hasta los usuarios (después de correrlo no queda ni el
-> usuario `admin`, así que nadie puede volver a entrar) y además deja datos de prueba.
+> usuario `admin`, así que nadie puede volver a entrar) y además deja datos de prueba,
+> incluyendo usuarios de fixture con contraseñas hardcodeadas y públicas en el código
+> (por ejemplo `supervisor` / `Pass1234!`) que sobreviven a un simple re-seed.
 >
 > Los tests son para desarrollo. **No correrlos nunca contra la instalación de producción.**
 > Si hace falta ejecutarlos en la misma máquina, hacer primero un backup (ver *Backups*)
-> y después restaurarlo, o levantar una base aparte apuntando `DATABASE_URL` a otro
-> nombre de base de datos.
+> y después restaurarlo.
+>
+> **Un simple `npm run seed` NO alcanza para recuperarse de esto:** el seed hace
+> `INSERT ... ON CONFLICT (username) DO UPDATE` solo sobre los 4 usuarios reales, pero
+> nunca borra usuarios que no forman parte del seed — así que cualquier usuario de
+> fixture creado por los tests (como `supervisor` / `Pass1234!`, con esa contraseña
+> visible en el código fuente del repo) queda vivo y accesible en el sistema en uso
+> después de re-sembrar. La única forma confiable de volver a un estado limpio es el
+> ciclo completo de reconstrucción (ver más abajo), que sí garantiza una base sin
+> residuos.
+>
+> Hoy **no existe una forma práctica de aislar los tests en una base separada**: el
+> `DATABASE_URL` del backend está fijado directamente en `docker-compose.yml` (no hay
+> una variable de entorno que lo sobreescriba fácilmente), y `db/init.sql` solo se
+> ejecuta automáticamente la primera vez que se crea el volumen de Postgres — apuntar a
+> otra base de datos hoy arrancaría sin ningún esquema y los tests fallarían de
+> inmediato por tablas inexistentes. Aislar tests/dev de esta manera es una mejora de
+> arquitectura pendiente (junto con el guard de código sugerido en el reporte de
+> verificación final), no algo que se pueda hacer hoy sin trabajo de ingeniería
+> adicional.
 
 ```bash
 docker compose up -d db
 docker compose run --rm backend npm test
 ```
 
-Para volver a dejar el sistema usable después de correr los tests hay que re-sembrar los
-datos iniciales y volver a cargar la nómina:
+Para volver a dejar el sistema en un estado realmente limpio después de correr los
+tests hay que hacer el ciclo completo de reconstrucción (no alcanza con re-sembrar,
+ver advertencia arriba) y después volver a cargar la nómina real:
 
 ```bash
+docker compose down
+rm -rf data/postgres
+docker compose up -d --build
 docker compose run --rm backend npm run seed
 ```
 
