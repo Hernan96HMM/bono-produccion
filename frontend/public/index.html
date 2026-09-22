@@ -846,17 +846,17 @@ async function rRes(){
   const emptyR=document.getElementById('res-empty');emptyR.style.display=people.length?'none':'block';
   if(!people.length&&perm.onlyMine&&base.length===0)emptyR.innerHTML=`No tenés personal con Evaluador = "${esc(SESSION.evaluador)}". Pedile al Administrador que te lo asigne en Personal.`;
   const carga=perm.carga,esAdmin=(carga==='todo');
-  const verPred=(SESSION.role==='produccion'); // ve como vienen evaluando los supervisores a su gente (Predisposición), ademas de su propio factor
+  const verTodo=esAdmin||SESSION.role==='produccion'; // produccion ve el desglose completo (como vienen evaluando supervisor y S&H), no solo su propio factor
   const simMoney=perm.money&&people.some(p=>+p.sueldo>0);
   let th='<tr><th class="l">Legajo</th><th class="l">Nombre</th><th class="l col-sec">Sector</th>';
-  if(esAdmin)th+='<th>F.Hs</th><th>F.Pred</th><th>F.S&H</th><th>Resultado</th>';
-  else{th+=`<th>${carga==='pred'?'F.Pred':carga==='sh'?'F.S&H':'F.Hs'}</th>`;if(verPred)th+='<th>F.Pred (supervisor)</th>';th+='<th>Resultado</th>';}
+  if(verTodo)th+='<th>F.Hs</th><th>F.Pred</th><th>F.S&H</th><th>Resultado</th>';
+  else th+=`<th>${carga==='pred'?'F.Pred':carga==='sh'?'F.S&H':'F.Hs'}</th><th>Resultado</th>`;
   if(simMoney)th+='<th>Sueldo (sim.)</th><th>Incentivo $ (sim.)</th>';th+='</tr>';document.getElementById('th-res').innerHTML=th;
   const tb=document.getElementById('tb-res');tb.innerHTML='';
   people.forEach(p=>{
     let row=`<td class="l mono">${p.leg}</td><td class="l">${esc(p.nom)}</td><td class="l col-sec">${esc(p.sec)}</td>`;
-    if(esAdmin)row+=`<td class="calc f">${p.fHs.toFixed(3)}</td><td class="calc f">${p.fPr.toFixed(3)}</td><td class="calc f">${p.fSh.toFixed(3)}</td><td>${badge(p.res,p.real)}</td>`;
-    else{const f=resPropio(p,carga);row+=`<td class="calc f">${f.toFixed(3)}</td>`;if(verPred)row+=`<td class="calc f">${p.fPr.toFixed(3)}</td>`;row+=`<td>${factorBadge(f)}</td>`;}
+    if(verTodo)row+=`<td class="calc f">${p.fHs.toFixed(3)}</td><td class="calc f">${p.fPr.toFixed(3)}</td><td class="calc f">${p.fSh.toFixed(3)}</td><td>${badge(p.res,p.real)}</td>`;
+    else{const f=resPropio(p,carga);row+=`<td class="calc f">${f.toFixed(3)}</td><td>${factorBadge(f)}</td>`;}
     if(simMoney)row+=`<td class="calc">${fmt$(p.sueldo)}</td><td class="calc" style="color:var(--grn);font-weight:600">${fmt$(p.inc)}</td>`;
     const tr=document.createElement('tr');tr.innerHTML=row;tb.appendChild(tr);
   });
